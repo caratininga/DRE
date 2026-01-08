@@ -910,7 +910,7 @@
                                                 <tbody className="divide-y divide-slate-100">
                                                     {sortedTransactions.map(t => (
                                                         <tr key={t.id} className="hover:bg-brand-50 group">
-                                                            <td className="p-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                                                            <td className="p-3 text-slate-600">{t.date ? t.date.split('-').reverse().join('/') : '-'}</td>
                                                             <td className="p-3 font-medium">{t.branch}</td>
                                                             <td className="p-3 font-mono text-slate-500">{t.code}</td>
                                                             <td className="p-3 text-slate-700">{accountPlan[t.code] || 'Não Cadastrado'}</td>
