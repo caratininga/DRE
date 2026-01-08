@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balneário Caratininga - Gestão DRE</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SheetJS (Para ler Excel) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Prop Types -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+
+    <!-- Recharts -->
+    <script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa', // Teal 50
+                            100: '#ccfbf1',
+                            500: '#14b8a6', // Teal 500
+                            600: '#0d9488', // Teal 600
+                            700: '#0f766e', // Teal 700
+                            900: '#134e4a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f0fdfa; }
+        ::-webkit-scrollbar-thumb { background: #99f6e4; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5eead4; }
+        
+        .pl-level-0 { padding-left: 0.75rem; }
+        .pl-level-1 { padding-left: 2rem; }
+        .pl-level-2 { padding-left: 3.5rem; }
+        .pl-level-3 { padding-left: 5rem; }
+        .pl-level-4 { padding-left: 6.5rem; }
+    </style>
+</head>
+<body class="bg-brand-50 text-slate-900 antialiased">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Configuração Firebase ---
+        // IMPORTANTE: Ao implantar em produção, substitua este bloco com suas credenciais reais do Firebase Console
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "SUA_API_KEY", authDomain: "SEU_PROJETO.firebaseapp.com", projectId: "SEU_PROJETO_ID" };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // --- Ícones ---
+        const Icons = {
+            Waves: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>,
+            Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
+            TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+            TrendingDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>,
+            Building2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>,
+            PlusCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>,
+            Edit2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>,
+            Database: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>,
+            Lock: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+            User: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            LogOut: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>,
+            SortAsc: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M11 12h10"/><path d="M11 16h7"/><path d="M11 20h4"/></svg>,
+            SortDesc: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h10"/><path d="M11 8h7"/><path d="M11 12h4"/></svg>,
+            SortDefault: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 18V6l-4 4"/><path d="M12 18V6l4 4"/></svg>,
+            Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>,
+            Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
+            Truck: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="2" y="11" rx="1"/><path d="M14 11h2.55a3 3 0 0 1 2.82 2.22l.54 2.28"/><path d="M2 15h11a2 2 0 0 1 2 2v2"/><path d="M5.5 15V9a3 3 0 0 1 3-3h5"/><circle cx="5.5" cy="19" r="2.5"/><circle cx="18.5" cy="19" r="2.5"/></svg>,
+            ArrowRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>,
+            ChevronRight: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>,
+            ChevronDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>,
+            ChevronLeft: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>,
+            FileText: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+        };
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const IconComponent = Icons[name];
+            return IconComponent ? <span className={`inline-flex items-center justify-center ${className}`} style={{width: size, height: size}}><IconComponent /></span> : null;
+        };
+
+        const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+        const Card = ({ title, value, subtext, icon, colorClass = "text-brand-600" }) => (
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-100 flex items-start justify-between hover:shadow-md transition-shadow">
+                <div>
+                    <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+                    <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+                    {subtext && <p className={`text-xs mt-2 ${colorClass}`}>{subtext}</p>}
+                </div>
+                <div className={`p-3 rounded-lg bg-brand-50 ${colorClass}`}>
+                    <Icon name={icon} size={24} />
+                </div>
+            </div>
+        );
+
+        // --- Componente Linha de Estatística ---
+        const StatRow = ({ label, value, isTotal = false, indent = false, color = "text-slate-700", borderTop = false }) => (
+            <div className={`flex justify-between items-center py-2.5 ${borderTop ? 'border-t border-slate-200 mt-1 pt-3' : 'border-b border-slate-50'} ${isTotal ? 'bg-slate-50 font-bold px-2 rounded' : ''} ${indent ? 'pl-6' : ''}`}>
+                <span className={`${isTotal ? 'text-slate-900' : 'text-slate-600'}`}>{label}</span>
+                <span className={`${color} font-mono`}>{value}</span>
+            </div>
+        );
+
+        // --- Componente: Tabela de Árvore ---
+        const TreeRow = ({ node, level = 0, onToggle, expandedItems }) => {
+            const hasChildren = node.children && node.children.length > 0;
+            const isExpanded = expandedItems.has(node.code);
+            const bgClass = level === 0 ? 'bg-slate-50 font-bold border-b border-slate-200' : 'hover:bg-brand-50 border-b border-slate-50';
+            const textClass = level === 0 ? 'text-slate-800' : 'text-slate-600';
+            const paddingClass = `pl-level-${Math.min(level, 4)}`;
+            
+            const isCredit = node.code.startsWith('01');
+            const valueColor = node.total >= 0 
+                ? (isCredit ? 'text-emerald-700' : 'text-red-700') 
+                : (isCredit ? 'text-red-700' : 'text-emerald-700');
+
+            return (
+                <React.Fragment>
+                    <tr className={`transition-colors cursor-pointer select-none ${bgClass}`} onClick={() => hasChildren && onToggle(node.code)}>
+                        <td className={`py-2 pr-4 text-left flex items-center gap-2 ${paddingClass} ${textClass}`}>
+                            {hasChildren && (
+                                <span className="text-brand-500">
+                                    {isExpanded ? <Icon name="ChevronDown" size={16} /> : <Icon name="ChevronRight" size={16} />}
+                                </span>
+                            )}
+                            {!hasChildren && <span className="w-4 h-4 inline-block"></span>}
+                            <span>
+                                <span className="font-mono text-xs opacity-50 mr-2">{node.code}</span>
+                                {node.name}
+                            </span>
+                        </td>
+                        <td className={`py-2 px-4 text-right font-mono ${valueColor}`}>
+                            {formatCurrency(node.total)}
+                        </td>
+                    </tr>
+                    {isExpanded && hasChildren && node.children.map(child => (
+                        <TreeRow 
+                            key={child.code} 
+                            node={child} 
+                            level={level + 1} 
+                            onToggle={onToggle} 
+                            expandedItems={expandedItems} 
+                        />
+                    ))}
+                </React.Fragment>
+            );
+        };
+
+        const DRETreeTable = ({ transactions, accountPlan }) => {
+            const [expandedItems, setExpandedItems] = React.useState(new Set(['01', '03', '03.13'])); // Expandir principais
+
+            const toggleExpand = (code) => {
+                const newSet = new Set(expandedItems);
+                if (newSet.has(code)) newSet.delete(code);
+                else newSet.add(code);
+                setExpandedItems(newSet);
+            };
+
+            const treeData = React.useMemo(() => {
+                const root = {};
+                
+                // 1. Processar todas as transações
+                transactions.forEach(t => {
+                    const code = t.code || '99';
+                    const amount = parseFloat(t.amount || 0);
+                    const parts = code.split('.');
+                    let currentCode = '';
+
+                    parts.forEach((part, index) => {
+                        currentCode = currentCode ? `${currentCode}.${part}` : part;
+                        
+                        if (!root[currentCode]) {
+                            let nodeName = accountPlan[currentCode] || `Conta ${currentCode}`;
+                            root[currentCode] = { 
+                                code: currentCode, 
+                                name: nodeName, 
+                                total: 0, 
+                                childrenMap: {}, 
+                                level: index 
+                            };
+                        }
+                        root[currentCode].total += amount;
+                    });
+                });
+
+                const nodes = Object.values(root).sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+                const forest = [];
+                const lookup = {};
+
+                nodes.forEach(node => {
+                    node.children = [];
+                    lookup[node.code] = node;
+                    const lastDotIndex = node.code.lastIndexOf('.');
+                    if (lastDotIndex > -1) {
+                        const parentCode = node.code.substring(0, lastDotIndex);
+                        if (lookup[parentCode]) lookup[parentCode].children.push(node);
+                        else forest.push(node); 
+                    } else forest.push(node);
+                });
+                return forest;
+            }, [transactions, accountPlan]);
+
+            return (
+                <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden flex flex-col h-full">
+                    <div className="bg-brand-800 px-6 py-4 flex justify-between items-center text-white">
+                        <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="Waves" /> Detalhamento Analítico</h2>
+                    </div>
+                    <div className="overflow-x-auto flex-1">
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-100 text-slate-500 uppercase text-xs font-bold sticky top-0 z-10">
+                                <tr>
+                                    <th className="py-3 px-4 text-left">Código / Conta</th>
+                                    <th className="py-3 px-4 text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {treeData.length === 0 && <tr><td colSpan="2" className="p-8 text-center text-slate-400">Nenhum dado encontrado.</td></tr>}
+                                {treeData.map(node => <TreeRow key={node.code} node={node} level={0} onToggle={toggleExpand} expandedItems={expandedItems} />)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const ClosureTable = ({ data, branches, onRowClick }) => {
+            if (!data || data.length === 0) return null;
+            const formatMoney = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(val);
+            const formatPercent = (val) => new Intl.NumberFormat('pt-BR', { style: 'percent', minimumFractionDigits: 2 }).format(val / 100);
+
+            return (
+                <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden mb-8">
+                    <div className="bg-slate-800 p-4 border-b border-slate-700">
+                        <h3 className="font-bold text-white text-lg flex items-center gap-2"><Icon name="Database" className="text-brand-400"/> FECHAMENTO MENSAL CONSOLIDADO</h3>
+                        <p className="text-xs text-slate-400 mt-1">Clique em uma linha para ver detalhes da unidade</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-right whitespace-nowrap">
+                            <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-xs">
+                                <tr>
+                                    <th className="p-3 text-left sticky left-0 bg-slate-100 z-10 border-r border-slate-200">Loja</th>
+                                    <th className="p-3 bg-blue-50 text-blue-800">Faturamento</th>
+                                    <th className="p-3 bg-red-50 text-red-800">Despesa Anotada</th>
+                                    {branches.map(b => <th key={b} className="p-3 bg-orange-50 text-orange-800">Transf. {b.replace(/^\d+-/, '')}</th>)}
+                                    <th className="p-3 bg-slate-200 text-slate-800 border-l border-slate-300">Despesa Ajustada</th>
+                                    <th className="p-3 bg-emerald-50 text-emerald-800">Saldo</th>
+                                    <th className="p-3 bg-emerald-50 text-emerald-800">Saldo %</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {data.map((row, idx) => (
+                                    <tr key={idx} onClick={() => !row.isTotal && onRowClick(row.name)} className={`transition-colors ${row.isTotal ? 'bg-slate-100 font-bold border-t-2 border-slate-300 cursor-default' : 'hover:bg-brand-50 cursor-pointer group'}`}>
+                                        <td className={`p-3 text-left sticky left-0 z-10 border-r border-slate-200 ${row.isTotal ? 'bg-slate-100' : 'bg-white group-hover:bg-brand-50'}`}>{row.name.replace(/^\d+-/, '')}{!row.isTotal && <span className="ml-2 opacity-0 group-hover:opacity-100 text-brand-500 text-xs">Ver &rarr;</span>}</td>
+                                        <td className="p-3 text-blue-700">{formatMoney(row.revenue)}</td>
+                                        <td className="p-3 text-red-700">{formatMoney(row.rawExpense)}</td>
+                                        {branches.map(b => { const val = row.transfersSent[b] || 0; return (<td key={b} className="p-3 text-orange-600">{val > 0 ? formatMoney(val) : '-'}</td>); })}
+                                        <td className="p-3 text-slate-900 border-l border-slate-200 font-semibold">{formatMoney(row.adjustedExpense)}</td>
+                                        <td className={`p-3 ${row.balance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatMoney(row.balance)}</td>
+                                        <td className={`p-3 ${row.balancePercent >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatPercent(row.balancePercent)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const TransferModal = ({ onClose, onSave, branches, accountPlan }) => {
+            const [data, setData] = React.useState({
+                date: new Date().toISOString().split('T')[0],
+                fromBranch: '1-MATRIZ',
+                toBranch: '',
+                amount: ''
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if(!data.toBranch || !data.amount) return alert("Preencha todos os campos");
+                onSave(data);
+            };
+
+            const availableBranches = branches.length > 0 ? branches : ['1-MATRIZ', '3-FRECHEIRINHA', '4-MUCAMBO', '5-TIANGUA'];
+
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in p-4">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
+                        <h3 className="text-xl font-bold text-brand-900 mb-4 flex items-center gap-2">
+                            <Icon name="Truck" /> Transferir Insumos
+                        </h3>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Data</label>
+                                <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className="w-full p-2 border rounded-lg" required />
+                            </div>
+                            <div className="flex gap-4 items-center">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Origem</label>
+                                    <select value={data.fromBranch} onChange={e=>setData({...data, fromBranch: e.target.value})} className="w-full p-2 border rounded-lg">
+                                        {availableBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                                    </select>
+                                </div>
+                                <Icon name="ArrowRight" className="text-slate-400 mt-6" />
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Destino</label>
+                                    <select value={data.toBranch} onChange={e=>setData({...data, toBranch: e.target.value})} className="w-full p-2 border rounded-lg" required>
+                                        <option value="">Selecione...</option>
+                                        {availableBranches.filter(b => b !== data.fromBranch).map(b => <option key={b} value={b}>{b}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Valor Transferido (R$)</label>
+                                <input type="number" step="0.01" value={data.amount} onChange={e=>setData({...data, amount: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="0.00" required />
+                            </div>
+                            <p className="text-xs text-slate-500 italic">Será gerado um lançamento com o código 03.01 (Custo da Mercadoria).</p>
+                            <div className="flex gap-2 pt-4">
+                                <button type="button" onClick={onClose} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600">Cancelar</button>
+                                <button type="submit" className="flex-1 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold">Confirmar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const ImportModal = ({ onImportTransactions, onImportPlan, onClose }) => {
+            const [mode, setMode] = React.useState('transactions'); // transactions | plan
+            const [uploading, setUploading] = React.useState(false);
+
+            const parseDate = (value) => {
+                if (!value) return new Date().toISOString().split('T')[0];
+                if (value instanceof Date) return value.toISOString().split('T')[0];
+                if (typeof value === 'number') { const date = new Date(Math.round((value - 25569) * 86400 * 1000)); return date.toISOString().split('T')[0]; }
+                if (typeof value === 'string') {
+                    if (value.includes('/')) { const parts = value.split('/'); if (parts.length === 3) { const day = parts[0]; const month = parts[1]; const year = parts[2].length === 2 ? '20' + parts[2] : parts[2]; return `${year}-${month}-${day}`; } }
+                    const date = new Date(value); if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+                }
+                return new Date().toISOString().split('T')[0];
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setUploading(true);
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target.result;
+                        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }); 
+                        
+                        // Ignora cabeçalho se houver
+                        if(data.length > 0 && typeof data[0][0] === 'string' && (data[0][0].toLowerCase().includes('data') || data[0][0].toLowerCase().includes('cod') || data[0][0].toLowerCase().includes('código'))) data.shift();
+
+                        if (mode === 'transactions') {
+                            // Colunas esperadas: Data [0] | Filial [1] | Código [2] | Valor [3]
+                            const parsedItems = data.map(row => {
+                                if (!row[3]) return null;
+                                const rawCode = row[2] ? String(row[2]).trim() : '99';
+                                return { 
+                                    date: parseDate(row[0]), 
+                                    branch: row[1] ? String(row[1]).trim() : 'Matriz', 
+                                    code: rawCode, 
+                                    amount: parseFloat(row[3]) || 0 
+                                };
+                            }).filter(i => i !== null);
+                            onImportTransactions(parsedItems);
+                        } else {
+                            // PLANO DE CONTAS
+                            // Colunas esperadas: Código [0] | Descrição [1]
+                            const planMap = {};
+                            data.forEach(row => {
+                                if (row[0] && row[1]) {
+                                    const code = String(row[0]).trim();
+                                    const name = String(row[1]).trim();
+                                    planMap[code] = name;
+                                }
+                            });
+                            onImportPlan(planMap);
+                        }
+                    } catch (error) { console.error(error); alert("Erro ao ler arquivo."); } finally { setUploading(false); }
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in p-4">
+                    <div className="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full">
+                        <h3 className="text-xl font-bold text-brand-900 mb-4 flex items-center gap-2"><Icon name="Upload" /> Importação</h3>
+                        
+                        <div className="flex gap-2 mb-6">
+                            <button onClick={() => setMode('transactions')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${mode === 'transactions' ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}`}>Lançamentos</button>
+                            <button onClick={() => setMode('plan')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${mode === 'plan' ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-500'}`}>Plano de Contas</button>
+                        </div>
+
+                        <div className="bg-brand-50 border-2 border-dashed border-brand-200 rounded-lg p-8 text-center hover:bg-brand-100 transition-colors cursor-pointer relative">
+                            <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={uploading}/>
+                            {uploading ? <span className="text-brand-600 font-bold">Processando...</span> : 
+                            <div className="text-brand-700">
+                                <p className="font-bold">Clique ou arraste o arquivo aqui</p>
+                                <p className="text-xs mt-2 font-medium">
+                                    {mode === 'transactions' 
+                                        ? 'Colunas: Data | Filial | Código | Valor' 
+                                        : 'Colunas: Código | Descrição'}
+                                </p>
+                            </div>}
+                        </div>
+                        <div className="mt-6 flex justify-end"><button onClick={onClose} className="px-4 py-2 text-slate-500 hover:text-slate-700 font-medium">Cancelar</button></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const LoginScreen = ({ onLogin }) => {
+            const [email, setEmail] = React.useState('');
+            const [password, setPassword] = React.useState('');
+            const [error, setError] = React.useState('');
+            
+            const handleLogin = async (e) => { 
+                e.preventDefault(); 
+                try { 
+                    await auth.signInWithEmailAndPassword(email, password); 
+                } catch (err) { 
+                    console.error(err);
+                    setError("Erro ao logar. Verifique credenciais."); 
+                } 
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-brand-50 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-64 h-64 bg-brand-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+                    <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-brand-100 relative z-10">
+                        <div className="text-center mb-8">
+                            <div className="bg-brand-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg rotate-3 hover:rotate-0 transition-transform"><Icon name="Waves" size={40} /></div>
+                            <h1 className="text-2xl font-bold text-brand-900">Balneário Caratininga</h1>
+                            <p className="text-brand-600/80 font-medium">Gestão Hierárquica DRE</p>
+                        </div>
+                        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">{error}</div>}
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <div><label className="block text-sm font-medium text-slate-700 mb-1">Email</label><div className="relative"><input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" placeholder="admin@balneario.com" /><div className="absolute left-3 top-3.5 text-slate-400"><Icon name="User" size={18} /></div></div></div>
+                            <div><label className="block text-sm font-medium text-slate-700 mb-1">Senha</label><div className="relative"><input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" placeholder="••••••••" /><div className="absolute left-3 top-3.5 text-slate-400"><Icon name="Lock" size={18} /></div></div></div>
+                            <button type="submit" className="w-full bg-brand-600 text-white py-3 rounded-lg font-bold hover:bg-brand-700 transition-colors shadow-lg shadow-brand-600/20">Entrar</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const DREApp = () => {
+            const [user, setUser] = React.useState(null);
+            const [transactions, setTransactions] = React.useState([]);
+            const [accountPlan, setAccountPlan] = React.useState({});
+            const [view, setView] = React.useState('dashboard');
+            const [selectedBranch, setSelectedBranch] = React.useState(null);
+            const [loading, setLoading] = React.useState(true);
+            const [showImport, setShowImport] = React.useState(false);
+            const [showTransfer, setShowTransfer] = React.useState(false);
+            const [formData, setFormData] = React.useState({ branch: '', code: '', amount: '', date: new Date().toISOString().split('T')[0] });
+            const [editingId, setEditingId] = React.useState(null);
+            const [sortType, setSortType] = React.useState('date'); 
+
+            React.useEffect(() => {
+                const initAuth = async () => {
+                    // Tenta login automático se o ambiente fornecer token (Preview)
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        try {
+                            await auth.signInWithCustomToken(__initial_auth_token);
+                        } catch (e) {
+                            console.error("Falha no login automático", e);
+                        }
+                    }
+                    // Se não tiver token, não faz nada e aguarda usuário na tela de login
+                };
+                initAuth();
+                
+                const unsubscribe = auth.onAuthStateChanged((u) => { 
+                    setUser(u); 
+                    setLoading(false); 
+                }); 
+                return () => unsubscribe(); 
+            }, []);
+            
+            // Carregar Transações e Plano de Contas
+            React.useEffect(() => { 
+                if (!user) return; 
+                setLoading(true); 
+                
+                const unsubTrans = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions').onSnapshot((snapshot) => { 
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    setTransactions(data); 
+                });
+
+                const unsubPlan = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_account_plan').doc('main_plan').onSnapshot((doc) => {
+                    if (doc.exists) setAccountPlan(doc.data().map || {});
+                    else setAccountPlan({}); // Ou usa padrão
+                });
+
+                setLoading(false);
+                return () => { unsubTrans(); unsubPlan(); };
+            }, [user]);
+
+            const uniqueBranches = React.useMemo(() => { const branches = new Set(transactions.map(t => t.branch)); return Array.from(branches).sort(); }, [transactions]);
+
+            // --- Cálculos de Fechamento Geral (Resumido) ---
+            const closureData = React.useMemo(() => {
+                if (uniqueBranches.length === 0) return [];
+                const data = {};
+                uniqueBranches.forEach(b => { data[b] = { name: b, revenue: 0, rawExpense: 0, transfersSent: {}, adjustedExpense: 0, balance: 0 }; uniqueBranches.forEach(target => data[b].transfersSent[target] = 0); });
+                transactions.forEach(t => {
+                    const val = parseFloat(t.amount || 0);
+                    const branch = t.branch;
+                    if (!data[branch]) return;
+                    
+                    const code = t.code || '99';
+                    
+                    if (code.startsWith('01')) data[branch].revenue += val;
+                    // Deduções (02, 03.13, 03.26)
+                    // Na tabela de fechamento simplificada, "Saldo" = Receita - Despesas Totais. Então tudo que não é 01 entra como gasto.
+                    else {
+                        const isTransfer = t.description && t.description.toLowerCase().includes('transf'); 
+                        const isTransferCode = code === '03.01' && t.description && t.description.includes('Transf');
+
+                        if (!isTransfer && !isTransferCode) {
+                             data[branch].rawExpense += val;
+                        }
+                        else if (val < 0 && t.description && t.description.includes(' para ')) { 
+                            const targetName = t.description.split(' para ')[1]?.trim(); 
+                            if (targetName && data[branch].transfersSent[targetName] !== undefined) data[branch].transfersSent[targetName] += Math.abs(val); 
+                        }
+                    }
+                });
+                const reportRows = uniqueBranches.map(b => {
+                    const row = data[b];
+                    let received = 0;
+                    uniqueBranches.forEach(sender => { if (sender !== b) received += data[sender].transfersSent[b] || 0; });
+                    let sentTotal = 0;
+                    Object.values(row.transfersSent).forEach(v => sentTotal += v);
+                    row.adjustedExpense = row.rawExpense - sentTotal + received;
+                    row.balance = row.revenue - row.adjustedExpense;
+                    row.balancePercent = row.revenue ? (row.balance / row.revenue) * 100 : 0;
+                    return row;
+                });
+                const totalRow = { name: 'TOTAL', revenue: 0, rawExpense: 0, transfersSent: {}, adjustedExpense: 0, balance: 0, isTotal: true };
+                uniqueBranches.forEach(b => totalRow.transfersSent[b] = 0);
+                reportRows.forEach(r => { totalRow.revenue += r.revenue; totalRow.rawExpense += r.rawExpense; totalRow.adjustedExpense += r.adjustedExpense; totalRow.balance += r.balance; uniqueBranches.forEach(b => totalRow.transfersSent[b] += r.transfersSent[b]); });
+                totalRow.balancePercent = totalRow.revenue ? (totalRow.balance / totalRow.revenue) * 100 : 0;
+                return [...reportRows, totalRow];
+            }, [transactions, uniqueBranches]);
+
+            // --- Cálculos de Totais Cards ---
+            const calculateTotals = () => {
+                let receita = 0, deducoes = 0, custos = 0, despesas = 0;
+                transactions.forEach(t => {
+                    const code = t.code || '99';
+                    const val = parseFloat(t.amount || 0);
+                    if (code.startsWith('01')) receita += val;
+                    else if (code.startsWith('02')) deducoes += val; 
+                    else if (code.startsWith('03.13')) deducoes += val; // Taxas
+                    else if (code.startsWith('03.26')) deducoes += val; // Impostos
+                    else if (code.startsWith('03') || code.startsWith('04')) {
+                        if (code.startsWith('03.01') || code.startsWith('03.02') || code.startsWith('03.03') || code.startsWith('03.04') || code.startsWith('03.05')) custos += val;
+                        else despesas += val;
+                    }
+                });
+                const lucroBruto = receita - deducoes - custos;
+                const lucroLiquido = lucroBruto - despesas;
+                return { receita, deducoes, custos, despesas, lucroBruto, lucroLiquido };
+            };
+            const totals = React.useMemo(() => calculateTotals(), [transactions]);
+            
+            const sortedTransactions = React.useMemo(() => {
+                const sorted = [...transactions];
+                if (sortType === 'amount-desc') return sorted.sort((a, b) => b.amount - a.amount);
+                if (sortType === 'amount-asc') return sorted.sort((a, b) => a.amount - b.amount);
+                return sorted.sort((a,b) => b.date.localeCompare(a.date));
+            }, [transactions, sortType]);
+            const toggleSort = () => { if (sortType === 'date') setSortType('amount-desc'); else if (sortType === 'amount-desc') setSortType('amount-asc'); else setSortType('date'); };
+
+            const handleLogout = () => auth.signOut();
+            const handleSubmit = async (e) => { e.preventDefault(); if (!user) return; const payload = { ...formData, amount: parseFloat(formData.amount), createdAt: firebase.firestore.FieldValue.serverTimestamp() }; const collectionRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions'); try { if (editingId) { await collectionRef.doc(editingId).update(payload); setEditingId(null); } else { await collectionRef.add(payload); } setFormData(prev => ({ ...prev, code: '', amount: '' })); alert('Salvo com sucesso!'); } catch (error) { alert("Erro ao salvar."); } };
+            
+            const handleBatchImportTransactions = async (items) => { if(!user || items.length === 0) return; const batch = db.batch(); const collectionRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions'); items.forEach(item => { const docRef = collectionRef.doc(); batch.set(docRef, { ...item, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }); try { await batch.commit(); setShowImport(false); alert(`${items.length} lançamentos importados com sucesso!`); } catch(err) { console.error(err); alert("Erro ao importar lançamentos."); } };
+            const handleBatchImportPlan = async (map) => { if(!user) return; try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_account_plan').doc('main_plan').set({ map }, { merge: true }); setShowImport(false); alert("Plano de contas atualizado!"); } catch(err) { console.error(err); alert("Erro ao importar plano."); } };
+
+            const handleDelete = async (id) => { if(!confirm("Excluir lançamento?")) return; try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions').doc(id).delete(); } catch(e) { console.error(e); } };
+            const handleEdit = (item) => { setFormData({ branch: item.branch, code: item.code || '', amount: item.amount, date: item.date || new Date().toISOString().split('T')[0] }); setEditingId(item.id); setView('data-entry'); };
+            const branchTransactions = React.useMemo(() => { if (!selectedBranch) return []; return transactions.filter(t => t.branch === selectedBranch); }, [transactions, selectedBranch]);
+
+            const handleTransfer = async (transferData) => {
+                if(!user) return;
+                const batch = db.batch();
+                const collectionRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions');
+                const amount = parseFloat(transferData.amount);
+                const docRefFrom = collectionRef.doc();
+                batch.set(docRefFrom, { branch: transferData.fromBranch, date: transferData.date, code: '03.01', description: `Transf para ${transferData.toBranch}`, amount: -amount, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                const docRefTo = collectionRef.doc();
+                batch.set(docRefTo, { branch: transferData.toBranch, date: transferData.date, code: '03.01', description: `Transf de ${transferData.fromBranch}`, amount: amount, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                try { await batch.commit(); setShowTransfer(false); alert("Transferência realizada!"); } catch(e) { console.error(e); alert("Erro."); }
+            };
+
+            // --- Lógica DRE Gerencial por Filial ---
+            const branchDRESummary = React.useMemo(() => {
+                if (!selectedBranch) return null;
+                const sums = { receitaBruta: 0, deducoes: 0, custos: 0, despesasOperacionais: 0, despesasFinanceiras: 0, outrasDespesas: 0 };
+                branchTransactions.forEach(t => {
+                    const code = t.code || '99';
+                    const val = parseFloat(t.amount || 0);
+                    if (code.startsWith('01')) sums.receitaBruta += val;
+                    else if (code.startsWith('02')) sums.deducoes += val;
+                    else if (code.startsWith('03.13')) sums.deducoes += val; // Taxas como dedução
+                    else if (code.startsWith('03.26')) sums.deducoes += val; // Impostos como dedução
+                    else if (code.startsWith('03')) {
+                        if (code.startsWith('03.01') || code.startsWith('03.02') || code.startsWith('03.03') || code.startsWith('03.04') || code.startsWith('03.05')) sums.custos += val;
+                        else sums.despesasOperacionais += val;
+                    } else if (code.startsWith('04')) sums.outrasDespesas += val;
+                });
+                const receitaLiquida = sums.receitaBruta - sums.deducoes;
+                const lucroBruto = receitaLiquida - sums.custos;
+                const resultadoOp = lucroBruto - sums.despesasOperacionais;
+                const resultadoLiquido = resultadoOp - sums.despesasFinanceiras - sums.outrasDespesas;
+                return { ...sums, receitaLiquida, lucroBruto, resultadoOp, resultadoLiquido };
+            }, [branchTransactions, selectedBranch]);
+
+            if (!user) return <LoginScreen />;
+            if (loading) return <div className="min-h-screen flex items-center justify-center bg-brand-50 text-brand-400 font-bold">Carregando Balneário System...</div>;
+
+            return (
+                <div className="min-h-screen bg-brand-50 font-sans text-slate-900 pb-10">
+                    <header className="bg-white border-b border-brand-100 shadow-sm sticky top-0 z-40">
+                        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-brand-600 text-white p-1.5 rounded-lg"><Icon name="Waves" /></div>
+                                <h1 className="text-xl font-bold text-slate-800 tracking-tight">Balneário <span className="text-brand-600">Caratininga</span></h1>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <nav className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                                    <button onClick={() => {setView('dashboard'); setSelectedBranch(null);}} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>Visão Geral</button>
+                                    <button onClick={() => setView('data-entry')} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${view === 'data-entry' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}><Icon name="PlusCircle" size={16} /> Lançamentos</button>
+                                </nav>
+                                <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 transition-colors" title="Sair"><Icon name="LogOut" /></button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="container mx-auto px-4 py-8">
+                        {view === 'branch-detail' && (
+                            <button onClick={() => {setView('dashboard'); setSelectedBranch(null);}} className="mb-6 flex items-center gap-2 px-4 py-2 text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 hover:shadow-sm transition-all text-sm font-bold"><Icon name="ChevronLeft" size={18} /> Voltar para Visão Geral</button>
+                        )}
+                        
+                        {view === 'dashboard' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <Card title="Receita Global" value={formatCurrency(totals.receita)} icon="TrendingUp" colorClass="text-emerald-600 bg-emerald-50" />
+                                    <Card title="Lucro Bruto" value={formatCurrency(totals.lucroBruto)} icon="Database" colorClass="text-brand-600 bg-brand-50" subtext={`Custo: ${formatCurrency(totals.custos)}`} />
+                                    <Card title="Despesas Totais" value={formatCurrency(totals.despesas)} icon="TrendingDown" colorClass="text-red-500 bg-red-50" />
+                                    <Card title="Lucro Líquido" value={formatCurrency(totals.lucroLiquido)} icon="Building2" colorClass={totals.lucroLiquido >= 0 ? "text-emerald-700 bg-emerald-100" : "text-red-700 bg-red-100"} />
+                                </div>
+                                <ClosureTable data={closureData} branches={uniqueBranches} onRowClick={(branch) => { setSelectedBranch(branch); setView('branch-detail'); }} />
+                            </div>
+                        )}
+                        
+                        {view === 'branch-detail' && selectedBranch && branchDRESummary && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                                <div className="lg:col-span-1">
+                                    <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden sticky top-20">
+                                        <div className="bg-slate-800 px-6 py-4 text-white">
+                                            <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="Building2" /> DRE Gerencial</h2>
+                                            <p className="text-xs opacity-70">{selectedBranch}</p>
+                                        </div>
+                                        <div className="p-6">
+                                            <StatRow label="(+) Receita Bruta" value={formatCurrency(branchDRESummary.receitaBruta)} isTotal color="text-brand-700" />
+                                            <StatRow label="(-) Deduções (Taxas/Imp)" value={`(${formatCurrency(branchDRESummary.deducoes)})`} indent color="text-red-500" />
+                                            <StatRow label="(=) Receita Líquida" value={formatCurrency(branchDRESummary.receitaLiquida)} isTotal borderTop />
+                                            <StatRow label="(-) CMV / Insumos" value={`(${formatCurrency(branchDRESummary.custos)})`} indent color="text-red-500" />
+                                            <StatRow label="(=) Lucro Bruto" value={formatCurrency(branchDRESummary.lucroBruto)} isTotal color="text-brand-700" borderTop />
+                                            <StatRow label="(-) Despesas Operacionais" value={`(${formatCurrency(branchDRESummary.despesasOperacionais)})`} indent color="text-red-500" />
+                                            <StatRow label="(=) Resultado Op." value={formatCurrency(branchDRESummary.resultadoOp)} isTotal borderTop />
+                                            <StatRow label="(-) Despesas Financeiras" value={`(${formatCurrency(branchDRESummary.despesasFinanceiras)})`} indent color="text-red-500" />
+                                            <StatRow label="(-) Outras Despesas / Inv." value={`(${formatCurrency(branchDRESummary.outrasDespesas)})`} indent color="text-red-500" />
+                                            <div className="my-4 border-t-2 border-brand-800"></div>
+                                            <div className="flex justify-between items-center py-3 px-4 bg-brand-50 rounded-lg">
+                                                <span className="font-bold text-slate-900">(=) LUCRO LÍQUIDO</span>
+                                                <span className={`font-bold text-lg ${branchDRESummary.resultadoLiquido >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(branchDRESummary.resultadoLiquido)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 border-t border-slate-200 grid grid-cols-2 gap-2 text-center">
+                                            <div><p className="text-xs text-slate-500 font-bold uppercase">Margem Bruta</p><p className="font-bold text-slate-700">{branchDRESummary.receitaLiquida ? ((branchDRESummary.lucroBruto/branchDRESummary.receitaLiquida)*100).toFixed(1) : 0}%</p></div>
+                                            <div><p className="text-xs text-slate-500 font-bold uppercase">Margem Líquida</p><p className={`font-bold ${branchDRESummary.resultadoLiquido >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{branchDRESummary.receitaLiquida ? ((branchDRESummary.resultadoLiquido/branchDRESummary.receitaLiquida)*100).toFixed(1) : 0}%</p></div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex flex-col gap-2">
+                                        <button onClick={() => {setFormData(prev => ({...prev, branch: selectedBranch})); setView('data-entry');}} className="w-full py-3 bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2"><Icon name="PlusCircle" size={18} /> Novo Lançamento</button>
+                                        <button onClick={() => setShowTransfer(true)} className="w-full py-3 bg-orange-50 text-orange-700 font-medium rounded-xl hover:bg-orange-100 border border-orange-200 flex items-center justify-center gap-2"><Icon name="Truck" size={18} /> Transferir Insumos</button>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-2">
+                                    <DRETreeTable transactions={branchTransactions} accountPlan={accountPlan} />
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'data-entry' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                                <div className="lg:col-span-1 space-y-6">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-100">
+                                        <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Edit2" /> {editingId ? 'Editar' : 'Novo Lançamento'}</h3>
+                                        <form onSubmit={handleSubmit} className="space-y-4">
+                                            <div>
+                                                <label className="text-sm font-medium text-slate-600">Filial</label>
+                                                {uniqueBranches.length > 0 ? (
+                                                    <select name="branch" value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500">
+                                                        <option value="" disabled>Selecione...</option>
+                                                        {uniqueBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                                                        <option value="Nova Filial">Outra (Digitar abaixo)</option>
+                                                    </select>
+                                                ) : (
+                                                    <input type="text" value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="Nome da Filial" required />
+                                                )}
+                                                {formData.branch === 'Nova Filial' && <input type="text" className="w-full mt-2 p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="Digite o nome da nova filial" onBlur={(e) => setFormData({...formData, branch: e.target.value})} />}
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-slate-600">Código da Conta (Ex: 03.01.001)</label>
+                                                <input type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="00.00.000" required />
+                                                <p className="text-xs text-brand-600 mt-1">{accountPlan[formData.code] ? `Conta: ${accountPlan[formData.code]}` : 'Conta não encontrada no plano'}</p>
+                                            </div>
+                                            <div><label className="text-sm font-medium text-slate-600">Valor (R$)</label><input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="0.00" required /></div>
+                                            <div><label className="text-sm font-medium text-slate-600">Data</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" required /></div>
+                                            <div className="flex gap-2 pt-2">
+                                                {editingId && <button type="button" onClick={() => {setEditingId(null); setFormData({...formData, code: '', amount: ''})}} className="flex-1 py-2 bg-slate-200 rounded-lg">Cancelar</button>}
+                                                <button type="submit" className="flex-1 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700"><Icon name="Save" className="mr-2" /> Salvar</button>
+                                            </div>
+                                        </form>
+                                        <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
+                                            <button onClick={() => setShowImport(true)} className="w-full py-3 bg-emerald-50 text-emerald-700 font-bold rounded-lg hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center gap-2"><Icon name="Upload" size={18}/> Importar Arquivos</button>
+                                            <button onClick={() => setShowTransfer(true)} className="w-full py-3 bg-orange-50 text-orange-700 font-bold rounded-lg hover:bg-orange-100 border border-orange-200 flex items-center justify-center gap-2"><Icon name="Truck" size={18} /> Transferir Insumos</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-2">
+                                    <div className="bg-white rounded-xl shadow-sm border border-brand-100 h-[600px] flex flex-col">
+                                        <div className="p-4 border-b border-brand-100 bg-brand-50 flex justify-between items-center"><h3 className="font-bold text-slate-700">Histórico</h3><span className="text-xs bg-white border border-brand-200 px-2 py-1 rounded text-brand-600 font-bold">{transactions.length} registros</span></div>
+                                        <div className="flex-1 overflow-auto p-0">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-slate-50 text-slate-500 sticky top-0 font-medium">
+                                                    <tr><th className="p-3">Data</th><th className="p-3">Filial</th><th className="p-3">Código</th><th className="p-3">Conta</th><th className="p-3 cursor-pointer hover:bg-slate-100" onClick={toggleSort}>Valor</th><th className="p-3 text-right">Ações</th></tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {sortedTransactions.map(t => (
+                                                        <tr key={t.id} className="hover:bg-brand-50 group">
+                                                            <td className="p-3 text-slate-600">{new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                                                            <td className="p-3 font-medium">{t.branch}</td>
+                                                            <td className="p-3 font-mono text-slate-500">{t.code}</td>
+                                                            <td className="p-3 text-slate-700">{accountPlan[t.code] || 'Não Cadastrado'}</td>
+                                                            <td className="p-3 font-mono">{formatCurrency(t.amount)}</td>
+                                                            <td className="p-3 text-right opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => handleEdit(t)} className="text-brand-500 mr-2"><Icon name="Edit2" size={16}/></button><button type="button" onClick={() => handleDelete(t.id)} className="text-red-500"><Icon name="Trash2" size={16}/></button></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {showImport && <ImportModal onImportTransactions={handleBatchImportTransactions} onImportPlan={handleBatchImportPlan} onClose={() => setShowImport(false)} />}
+                        {showTransfer && <TransferModal onClose={() => setShowTransfer(false)} onSave={handleTransfer} branches={uniqueBranches} accountPlan={accountPlan} />}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DREApp />);
+    </script>
+</body>
+</html>
