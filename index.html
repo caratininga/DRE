@@ -96,7 +96,7 @@
             Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>,
             TrendingUp: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
             TrendingDown: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>,
-            Building2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2-2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>,
+            Building2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>,
             PlusCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>,
             Edit2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>,
             Database: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>,
@@ -125,6 +125,14 @@
         };
 
         const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+        const formatMonthYear = (yyyyMm) => {
+            if (!yyyyMm) return 'Todos';
+            const [year, month] = yyyyMm.split('-');
+            const date = new Date(parseInt(year), parseInt(month) - 1);
+            const monthName = date.toLocaleString('pt-BR', { month: 'long' });
+            return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}/${year}`;
+        };
 
         const Card = ({ title, value, subtext, icon, colorClass = "text-brand-600" }) => (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-100 flex items-start justify-between hover:shadow-md transition-shadow">
@@ -613,6 +621,25 @@
                 return Array.from(branches).sort(); 
             }, [transactions]);
 
+            // --- Cálculos de meses disponíveis ---
+            const availableMonths = React.useMemo(() => {
+                const months = new Set();
+                transactions.forEach(t => {
+                    // Usar data de competência para a lista de filtros, pois é a data principal
+                    if (t.date) months.add(t.date.slice(0, 7)); // YYYY-MM
+                });
+                // Ordenar decrescente
+                return Array.from(months).sort().reverse();
+            }, [transactions]);
+
+            // Garante que o mês selecionado esteja na lista ou seja o mais recente
+            React.useEffect(() => {
+                if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+                    setSelectedMonth(availableMonths[0]);
+                }
+            }, [availableMonths, selectedMonth]);
+
+
             // --- FILTRAGEM CENTRALIZADA (CORAÇÃO DA LÓGICA) ---
             const filteredTransactions = React.useMemo(() => {
                 let initialFiltered = transactions;
@@ -839,12 +866,20 @@
                             {/* --- CONTROLES DE FILTRO --- */}
                             <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
                                 <div className="relative">
-                                    <input 
-                                        type="month" 
-                                        value={selectedMonth} 
-                                        onChange={(e) => setSelectedMonth(e.target.value)} 
-                                        className="bg-white border border-slate-200 text-slate-700 text-sm font-bold py-1.5 px-3 rounded-md outline-none focus:ring-2 focus:ring-brand-500"
-                                    />
+                                    {availableMonths.length > 0 ? (
+                                        <select 
+                                            value={selectedMonth} 
+                                            onChange={(e) => setSelectedMonth(e.target.value)} 
+                                            className="bg-white border border-slate-200 text-slate-700 text-sm font-bold py-1.5 px-3 rounded-md outline-none focus:ring-2 focus:ring-brand-500 appearance-none cursor-pointer pr-8"
+                                            style={{backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em'}}
+                                        >
+                                            {availableMonths.map(month => (
+                                                <option key={month} value={month}>{formatMonthYear(month)}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="bg-white border border-slate-200 text-slate-400 text-sm py-1.5 px-3 rounded-md">Sem dados</div>
+                                    )}
                                 </div>
                                 <div className="flex bg-white rounded-md border border-slate-200 overflow-hidden">
                                     <button 
@@ -875,7 +910,7 @@
                     <main className="container mx-auto px-4 py-8">
                         {/* Status Bar do Filtro */}
                         <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm">
-                            <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? selectedMonth : 'Todo o Período'}</strong></span>
+                            <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
                             <span className="flex items-center gap-2">Modo: <strong>{regime === 'competencia' ? 'DRE Econômico (Competência)' : 'Fluxo Financeiro (Caixa)'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
                         </div>
 
