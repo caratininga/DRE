@@ -117,7 +117,8 @@
             FileText: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>,
             Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
             Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
-            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+            Eye: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         };
 
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -133,6 +134,13 @@
             const date = new Date(parseInt(year), parseInt(month) - 1);
             const monthName = date.toLocaleString('pt-BR', { month: 'long' });
             return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}/${year}`;
+        };
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0].substring(2)}`;
+            return dateStr;
         };
 
         const Card = ({ title, value, subtext, icon, colorClass = "text-brand-600" }) => (
@@ -387,7 +395,7 @@
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Data</label>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Data (DRE, Comp e Baixa)</label>
                                 <input type="date" value={data.date} onChange={e=>setData({...data, date: e.target.value})} className="w-full p-2 border rounded-lg" required />
                             </div>
                             <div className="flex gap-4 items-center">
@@ -410,7 +418,7 @@
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Valor Transferido (R$)</label>
                                 <input type="number" step="0.01" value={data.amount} onChange={e=>setData({...data, amount: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="0.00" required />
                             </div>
-                            <p className="text-xs text-slate-500 italic">Será gerado um lançamento com o código 03.01 (Custo da Mercadoria).</p>
+                            <p className="text-xs text-slate-500 italic">Será gerado um lançamento com o código 03.01.001 (Custo da Mercadoria).</p>
                             <div className="flex gap-2 pt-4">
                                 <button type="button" onClick={onClose} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600">Cancelar</button>
                                 <button type="submit" className="flex-1 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-bold">Confirmar</button>
@@ -426,14 +434,14 @@
             const [uploading, setUploading] = React.useState(false);
 
             const parseDate = (value) => {
-                if (!value) return new Date().toISOString().split('T')[0];
+                if (!value) return null;
                 if (value instanceof Date) return value.toISOString().split('T')[0];
                 if (typeof value === 'number') { const date = new Date(Math.round((value - 25569) * 86400 * 1000)); return date.toISOString().split('T')[0]; }
                 if (typeof value === 'string') {
                     if (value.includes('/')) { const parts = value.split('/'); if (parts.length === 3) { const day = parts[0]; const month = parts[1]; const year = parts[2].length === 2 ? '20' + parts[2] : parts[2]; return `${year}-${month}-${day}`; } }
                     const date = new Date(value); if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
                 }
-                return new Date().toISOString().split('T')[0];
+                return null;
             };
 
             const handleFileUpload = (e) => {
@@ -453,35 +461,35 @@
                         if(data.length > 0 && typeof data[0][0] === 'string' && (data[0][0].toLowerCase().includes('data') || data[0][0].toLowerCase().includes('cod') || data[0][0].toLowerCase().includes('código'))) data.shift();
 
                         if (mode === 'transactions') {
-                            // Colunas esperadas: Data [0] | Filial [1] | Código [2] | Valor [3] | Status [4] | Data Pgto [5]
+                            // Nova Ordem:
+                            // 0: Data DRE | 1: Data Comp | 2: Data Baixa | 3: Filial | 4: Código | 5: Valor | 6: Status | 7: Obs
                             const parsedItems = data.map(row => {
-                                if (!row[3]) return null;
-                                const rawCode = row[2] ? String(row[2]).trim() : '99';
+                                if (!row[5]) return null; // Valor é mandatório
+                                const rawCode = row[4] ? String(row[4]).trim() : '99';
                                 
+                                const dateDRE = parseDate(row[0]);
+                                const dateComp = parseDate(row[1]) || dateDRE;
+                                let datePay = parseDate(row[2]);
+
                                 // Tratamento Status
-                                let status = 'paid'; // padrão
-                                if(row[4]) {
-                                    const st = String(row[4]).toLowerCase().trim();
+                                let status = 'paid'; 
+                                if(row[6]) {
+                                    const st = String(row[6]).toLowerCase().trim();
                                     if(st.includes('pend') || st.includes('aberto')) status = 'pending';
                                 }
 
-                                // Tratamento Data Pagamento
-                                let paymentDate = parseDate(row[0]); // padrão é data de emissão
-                                if(row[5]) {
-                                    paymentDate = parseDate(row[5]);
-                                } else if(status === 'paid') {
-                                    paymentDate = parseDate(row[0]);
-                                } else {
-                                    paymentDate = '';
-                                }
+                                if(status === 'paid' && !datePay) datePay = dateDRE;
+                                if(status === 'pending') datePay = '';
 
                                 return { 
-                                    date: parseDate(row[0]), 
-                                    branch: row[1] ? String(row[1]).trim() : 'Matriz', 
+                                    dreDate: dateDRE || new Date().toISOString().split('T')[0],
+                                    competenceDate: dateComp,
+                                    paymentDate: datePay,
+                                    branch: row[3] ? String(row[3]).trim() : 'Matriz', 
                                     code: rawCode, 
-                                    amount: parseFloat(row[3]) || 0,
+                                    amount: parseFloat(row[5]) || 0,
                                     status: status,
-                                    paymentDate: paymentDate
+                                    observation: row[7] ? String(row[7]).trim() : ''
                                 };
                             }).filter(i => i !== null);
                             onImportTransactions(parsedItems);
@@ -517,7 +525,7 @@
                                 <p className="font-bold">Clique ou arraste o arquivo aqui</p>
                                 <p className="text-xs mt-2 font-medium">
                                     {mode === 'transactions' 
-                                        ? 'Colunas: Data | Filial | Código | Valor | Status (Opc) | Data Pgto (Opc)' 
+                                        ? 'Colunas: Data DRE | Comp. | Baixa | Filial | Cód | Valor | Status | Obs' 
                                         : 'Colunas: Código | Descrição'}
                                 </p>
                             </div>}
@@ -577,14 +585,18 @@
             const [loading, setLoading] = React.useState(true);
             const [showImport, setShowImport] = React.useState(false);
             const [showTransfer, setShowTransfer] = React.useState(false);
-            const [formData, setFormData] = React.useState({ branch: '', code: '', amount: '', date: new Date().toISOString().split('T')[0], status: 'paid', paymentDate: '' });
+            const [formData, setFormData] = React.useState({ 
+                branch: '', code: '', amount: '', 
+                dreDate: new Date().toISOString().split('T')[0], 
+                competenceDate: new Date().toISOString().split('T')[0],
+                paymentDate: '', 
+                status: 'paid', observation: ''
+            });
             const [editingId, setEditingId] = React.useState(null);
             const [sortType, setSortType] = React.useState('date');
             const [searchTerm, setSearchTerm] = React.useState('');
             const [returnToBranchDetail, setReturnToBranchDetail] = React.useState(false);
             
-            // --- NOVOS FILTROS GLOBAIS ---
-            const [regime, setRegime] = React.useState('competencia'); // 'competencia' | 'caixa'
             const [selectedMonth, setSelectedMonth] = React.useState(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
 
             React.useEffect(() => {
@@ -602,7 +614,16 @@
                 if (!user) return; 
                 setLoading(true); 
                 const unsubTrans = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions').onSnapshot((snapshot) => { 
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); 
+                    const data = snapshot.docs.map(doc => {
+                        const d = doc.data();
+                        // Retrocompatibilidade para dados antigos
+                        return { 
+                            id: doc.id, 
+                            ...d,
+                            dreDate: d.dreDate || d.date, // Se não tiver data DRE, usa a antiga data principal
+                            competenceDate: d.competenceDate || d.date // Mesma coisa para competencia
+                        }; 
+                    }); 
                     setTransactions(data); 
                 });
                 const unsubPlan = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_account_plan').doc('main_plan').onSnapshot((doc) => {
@@ -617,56 +638,57 @@
                 const branches = new Set(
                     transactions
                         .map(t => t.branch)
-                        .filter(b => b && !b.includes('Graça Centro') && !b.includes('GRAÇA CENTRO')) // Filtra Graça Centro
+                        .filter(b => b && !b.includes('Graça Centro') && !b.includes('GRAÇA CENTRO')) 
                 ); 
                 return Array.from(branches).sort(); 
             }, [transactions]);
 
-            // --- Cálculos de meses disponíveis ---
             const availableMonths = React.useMemo(() => {
                 const months = new Set();
                 transactions.forEach(t => {
-                    // Usar data de competência para a lista de filtros, pois é a data principal
-                    if (t.date) months.add(t.date.slice(0, 7)); // YYYY-MM
+                    if (t.dreDate) months.add(t.dreDate.slice(0, 7));
                 });
-                // Ordenar decrescente
                 return Array.from(months).sort().reverse();
             }, [transactions]);
 
-            // Garante que o mês selecionado esteja na lista ou seja o mais recente
             React.useEffect(() => {
                 if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
                     setSelectedMonth(availableMonths[0]);
                 }
             }, [availableMonths, selectedMonth]);
 
-
-            // --- FILTRAGEM CENTRALIZADA (CORAÇÃO DA LÓGICA) ---
+            // --- FILTRAGEM ---
             const filteredTransactions = React.useMemo(() => {
                 let initialFiltered = transactions;
                 
-                // Filtro "Graça Centro" na fonte dos dados
+                // Filtro "Graça Centro"
                 initialFiltered = initialFiltered.filter(t => t.branch && !t.branch.includes('Graça Centro') && !t.branch.includes('GRAÇA CENTRO'));
 
                 if(!selectedMonth) return initialFiltered; 
                 
-                return initialFiltered.filter(t => {
-                    // 1. Filtro de Regime
-                    if (regime === 'caixa') {
-                        // Se não estiver pago, fora
-                        if (t.status === 'pending') return false; 
-                        
-                        // Data a considerar: pagamento (se existir) ou competência como fallback
-                        const checkDate = t.paymentDate || t.date;
-                        return checkDate.startsWith(selectedMonth);
-                    } else {
-                        // Regime Competência: considera tudo, baseado na data de emissão
-                        return t.date.startsWith(selectedMonth);
+                // Filtro por Data DRE apenas
+                return initialFiltered.filter(t => t.dreDate && t.dreDate.startsWith(selectedMonth));
+            }, [transactions, selectedMonth]);
+
+            const calculateTotals = () => {
+                let receita = 0, deducoes = 0, custos = 0, despesas = 0;
+                filteredTransactions.forEach(t => {
+                    const code = t.code || '99';
+                    const val = parseFloat(t.amount || 0);
+                    if (code.startsWith('01')) receita += val;
+                    else if (code.startsWith('02')) deducoes += val; 
+                    else if (code.startsWith('03.13')) deducoes += val; 
+                    else if (code.startsWith('03.26')) deducoes += val; 
+                    else if (code.startsWith('03') || code.startsWith('04')) {
+                        if (code.startsWith('03.01') || code.startsWith('03.02') || code.startsWith('03.03') || code.startsWith('03.04') || code.startsWith('03.05')) custos += val;
+                        else despesas += val;
                     }
                 });
-            }, [transactions, regime, selectedMonth]);
-
-            // --- CÁLCULOS USAM filteredTransactions AGORA ---
+                const lucroBruto = receita - deducoes - custos;
+                const lucroLiquido = lucroBruto - despesas;
+                return { receita, deducoes, custos, despesas, lucroBruto, lucroLiquido };
+            };
+            const totals = React.useMemo(() => calculateTotals(), [filteredTransactions]);
             
             const closureData = React.useMemo(() => {
                 if (uniqueBranches.length === 0) return [];
@@ -682,7 +704,7 @@
                     if (code.startsWith('01')) data[branch].revenue += val;
                     else {
                         const isTransfer = t.description && t.description.toLowerCase().includes('transf'); 
-                        const isTransferCode = code === '03.01' && t.description && t.description.includes('Transf');
+                        const isTransferCode = (code === '03.01' || code === '03.01.001') && t.description && t.description.includes('Transf');
 
                         if (!isTransfer && !isTransferCode) {
                              data[branch].rawExpense += val;
@@ -711,32 +733,7 @@
                 return [...reportRows, totalRow];
             }, [filteredTransactions, uniqueBranches]);
 
-            const calculateTotals = () => {
-                let receita = 0, deducoes = 0, custos = 0, despesas = 0;
-                filteredTransactions.forEach(t => {
-                    const code = t.code || '99';
-                    const val = parseFloat(t.amount || 0);
-                    if (code.startsWith('01')) receita += val;
-                    else if (code.startsWith('02')) deducoes += val; 
-                    else if (code.startsWith('03.13')) deducoes += val; 
-                    else if (code.startsWith('03.26')) deducoes += val; 
-                    else if (code.startsWith('03') || code.startsWith('04')) {
-                        if (code.startsWith('03.01') || code.startsWith('03.02') || code.startsWith('03.03') || code.startsWith('03.04') || code.startsWith('03.05')) custos += val;
-                        else despesas += val;
-                    }
-                });
-                const lucroBruto = receita - deducoes - custos;
-                const lucroLiquido = lucroBruto - despesas;
-                return { receita, deducoes, custos, despesas, lucroBruto, lucroLiquido };
-            };
-            const totals = React.useMemo(() => calculateTotals(), [filteredTransactions]);
-            
             const sortedTransactions = React.useMemo(() => {
-                // Aqui usamos transactions (todas) ou filteredTransactions?
-                // Para a lista de "Histórico" (Data Entry), geralmente queremos ver TUDO para poder editar,
-                // mas se o usuário filtrou mês, talvez queira ver só o mês.
-                // Vamos usar filteredTransactions para ser consistente com a visão.
-                
                 let filtered = [...filteredTransactions];
                 
                 if (searchTerm) {
@@ -746,7 +743,8 @@
                         (t.code || '').toLowerCase().includes(term) ||
                         (accountPlan[t.code] || '').toLowerCase().includes(term) ||
                         (t.amount || '').toString().includes(term) ||
-                        (t.date || '').includes(term)
+                        (t.dreDate || '').includes(term) ||
+                        (t.observation || '').toLowerCase().includes(term)
                     );
                 }
 
@@ -758,7 +756,7 @@
 
                 if (sortType === 'amount-desc') return filtered.sort((a, b) => b.amount - a.amount);
                 if (sortType === 'amount-asc') return filtered.sort((a, b) => a.amount - b.amount);
-                return filtered.sort((a,b) => b.date.localeCompare(a.date));
+                return filtered.sort((a,b) => (b.dreDate || '').localeCompare(a.dreDate || ''));
             }, [filteredTransactions, sortType, searchTerm, selectedBranch, view, accountPlan]);
 
             const toggleSort = () => { if (sortType === 'date') setSortType('amount-desc'); else if (sortType === 'amount-desc') setSortType('amount-asc'); else setSortType('date'); };
@@ -766,17 +764,18 @@
             const handleLogout = () => auth.signOut();
             
             const handleExport = () => {
-                // Cabeçalho compatível com importação
-                const header = ["Data Competência", "Filial", "Código", "Valor", "Status", "Data Pagamento"];
+                const header = ["Data DRE", "Data Competência", "Data Baixa", "Filial", "Código", "Valor", "Status", "Observação"];
                 
-                // Exportar TUDO (transactions) para garantir backup completo, não só o filtrado
+                // Exportar TUDO para backup
                 const rows = transactions.map(t => [
-                    t.date ? t.date.split('-').reverse().join('/') : '',
+                    t.dreDate ? t.dreDate.split('-').reverse().join('/') : '',
+                    t.competenceDate ? t.competenceDate.split('-').reverse().join('/') : '',
+                    (t.paymentDate && t.status === 'paid') ? t.paymentDate.split('-').reverse().join('/') : '',
                     t.branch,
                     t.code,
                     t.amount,
                     t.status === 'pending' ? 'Pendente' : 'Pago',
-                    (t.paymentDate && t.status === 'paid') ? t.paymentDate.split('-').reverse().join('/') : ''
+                    t.observation || ''
                 ]);
                 
                 const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
@@ -789,12 +788,12 @@
                 e.preventDefault(); 
                 if (!user) return; 
                 
-                // Tratar dados para salvar
                 const payload = { 
                     ...formData, 
                     amount: parseFloat(formData.amount),
-                    // Se estiver pagando agora e não tem data de pagamento, assume hoje
-                    paymentDate: formData.status === 'paid' && !formData.paymentDate ? formData.date : formData.paymentDate,
+                    // Se estiver pagando agora e não tem data de pagamento, assume data DRE
+                    paymentDate: formData.status === 'paid' && !formData.paymentDate ? formData.dreDate : formData.paymentDate,
+                    date: formData.dreDate, // Legacy support field
                     createdAt: firebase.firestore.FieldValue.serverTimestamp() 
                 }; 
                 
@@ -806,14 +805,14 @@
                     } else { 
                         await collectionRef.add(payload); 
                     } 
-                    setFormData({ branch: '', code: '', amount: '', date: new Date().toISOString().split('T')[0], status: 'paid', paymentDate: '' }); 
+                    setFormData({ branch: '', code: '', amount: '', dreDate: new Date().toISOString().split('T')[0], competenceDate: new Date().toISOString().split('T')[0], paymentDate: '', status: 'paid', observation: '' }); 
                     alert('Salvo com sucesso!'); 
                 } catch (error) { 
                     alert("Erro ao salvar."); 
                 } 
             };
             
-            const handleBatchImportTransactions = async (items) => { if(!user || items.length === 0) return; const batch = db.batch(); const collectionRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions'); items.forEach(item => { const docRef = collectionRef.doc(); batch.set(docRef, { ...item, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }); try { await batch.commit(); setShowImport(false); alert(`${items.length} lançamentos importados com sucesso!`); } catch(err) { console.error(err); alert("Erro ao importar lançamentos."); } };
+            const handleBatchImportTransactions = async (items) => { if(!user || items.length === 0) return; const batch = db.batch(); const collectionRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions'); items.forEach(item => { const docRef = collectionRef.doc(); batch.set(docRef, { ...item, date: item.dreDate, createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }); try { await batch.commit(); setShowImport(false); alert(`${items.length} lançamentos importados com sucesso!`); } catch(err) { console.error(err); alert("Erro ao importar lançamentos."); } };
             const handleBatchImportPlan = async (map) => { if(!user) return; try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_account_plan').doc('main_plan').set({ map }, { merge: true }); setShowImport(false); alert("Plano de contas atualizado!"); } catch(err) { console.error(err); alert("Erro ao importar plano."); } };
             const handleDelete = async (id) => { if(!confirm("Excluir lançamento?")) return; try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions').doc(id).delete(); } catch(e) { console.error(e); } };
             
@@ -822,9 +821,11 @@
                     branch: item.branch, 
                     code: item.code || '', 
                     amount: item.amount, 
-                    date: item.date || new Date().toISOString().split('T')[0],
-                    status: item.status || 'paid', // Retrocompatibilidade
-                    paymentDate: item.paymentDate || item.date || '' 
+                    dreDate: item.dreDate || item.date || new Date().toISOString().split('T')[0],
+                    competenceDate: item.competenceDate || item.date || new Date().toISOString().split('T')[0],
+                    status: item.status || 'paid',
+                    paymentDate: item.paymentDate || '',
+                    observation: item.observation || ''
                 }); 
                 setEditingId(item.id); 
                 setView('data-entry'); 
@@ -844,11 +845,16 @@
                 const batch = db.batch();
                 const collectionRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('dre_transactions');
                 const amount = parseFloat(transferData.amount);
-                // Transferências geralmente são movimentos financeiros imediatos, então 'paid' e mesma data
+                const code = '03.01.001';
+                // Transferências: 3 datas iguais
+                const date = transferData.date;
+                
                 const docRefFrom = collectionRef.doc();
-                batch.set(docRefFrom, { branch: transferData.fromBranch, date: transferData.date, code: '03.01', description: `Transf para ${transferData.toBranch}`, amount: -amount, status: 'paid', paymentDate: transferData.date, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                batch.set(docRefFrom, { branch: transferData.fromBranch, date: date, dreDate: date, competenceDate: date, paymentDate: date, code: code, description: `Transf para ${transferData.toBranch}`, amount: -amount, status: 'paid', observation: 'Transferência Automática', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                
                 const docRefTo = collectionRef.doc();
-                batch.set(docRefTo, { branch: transferData.toBranch, date: transferData.date, code: '03.01', description: `Transf de ${transferData.fromBranch}`, amount: amount, status: 'paid', paymentDate: transferData.date, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                batch.set(docRefTo, { branch: transferData.toBranch, date: date, dreDate: date, competenceDate: date, paymentDate: date, code: code, description: `Transf de ${transferData.fromBranch}`, amount: amount, status: 'paid', observation: 'Transferência Automática', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+                
                 try { await batch.commit(); setShowTransfer(false); alert("Transferência realizada!"); } catch(e) { console.error(e); alert("Erro."); }
             };
 
@@ -884,7 +890,6 @@
                                 <h1 className="text-xl font-bold text-slate-800 tracking-tight hidden md:block">Balneário <span className="text-brand-600">Caratininga</span></h1>
                             </div>
 
-                            {/* --- CONTROLES DE FILTRO --- */}
                             <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
                                 <div className="relative">
                                     {availableMonths.length > 0 ? (
@@ -902,20 +907,6 @@
                                         <div className="bg-white border border-slate-200 text-slate-400 text-sm py-1.5 px-3 rounded-md">Sem dados</div>
                                     )}
                                 </div>
-                                <div className="flex bg-white rounded-md border border-slate-200 overflow-hidden">
-                                    <button 
-                                        onClick={() => setRegime('competencia')} 
-                                        className={`px-3 py-1.5 text-xs font-bold transition-colors ${regime === 'competencia' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                                    >
-                                        COMPETÊNCIA
-                                    </button>
-                                    <button 
-                                        onClick={() => setRegime('caixa')} 
-                                        className={`px-3 py-1.5 text-xs font-bold transition-colors ${regime === 'caixa' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
-                                    >
-                                        CAIXA
-                                    </button>
-                                </div>
                             </div>
 
                             <div className="flex items-center gap-4">
@@ -932,7 +923,7 @@
                         {/* Status Bar do Filtro */}
                         <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm">
                             <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
-                            <span className="flex items-center gap-2">Modo: <strong>{regime === 'competencia' ? 'DRE Econômico (Competência)' : 'Fluxo Financeiro (Caixa)'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
+                            <span className="flex items-center gap-2">Data base: <strong>Data do DRE</strong></span>
                         </div>
 
                         {view === 'branch-detail' && (
@@ -1032,33 +1023,37 @@
                                                 <input type="text" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="00.00.000" required />
                                                 <p className="text-xs text-brand-600 mt-1">{accountPlan[formData.code] ? `Conta: ${accountPlan[formData.code]}` : 'Conta não encontrada no plano'}</p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="text-sm font-medium text-slate-600">Valor (R$)</label><input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="0.00" required /></div>
-                                                <div><label className="text-sm font-medium text-slate-600">Data Emissão</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" required /></div>
+                                            <div><label className="text-sm font-medium text-slate-600">Valor (R$)</label><input type="number" step="0.01" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500" placeholder="0.00" required /></div>
+                                            
+                                            {/* --- BLOCO DE DATAS --- */}
+                                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+                                                <div>
+                                                    <label className="text-xs font-bold text-brand-700 uppercase">Data do DRE (Filtro)</label>
+                                                    <input type="date" value={formData.dreDate} onChange={e => setFormData({...formData, dreDate: e.target.value})} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-500" required />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="text-xs font-medium text-slate-600">Data Competência</label>
+                                                        <input type="date" value={formData.competenceDate} onChange={e => setFormData({...formData, competenceDate: e.target.value})} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-500" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-medium text-slate-600">Data Baixa (Pgto)</label>
+                                                        <input type="date" value={formData.paymentDate} onChange={e => setFormData({...formData, paymentDate: e.target.value})} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-500" disabled={formData.status !== 'paid'} />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-sm font-medium text-slate-600">Observação</label>
+                                                <textarea value={formData.observation} onChange={e => setFormData({...formData, observation: e.target.value})} className="w-full p-2 border border-slate-300 rounded-lg outline-none focus:border-brand-500 text-sm" rows="2" placeholder="Detalhes opcionais..."></textarea>
                                             </div>
                                             
-                                            {/* --- NOVOS CAMPOS DE CAIXA --- */}
-                                            <div className="p-3 bg-brand-50 rounded-lg border border-brand-100">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <label className="text-sm font-bold text-brand-800">Financeiro / Caixa</label>
-                                                    <Icon name="CheckCircle" size={14} className="text-brand-500"/>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <label className="text-xs font-medium text-slate-600 block mb-1">Status do Pagamento</label>
-                                                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full p-2 text-sm border border-brand-200 rounded-lg outline-none focus:border-brand-500 bg-white">
-                                                            <option value="paid">Pago / Recebido</option>
-                                                            <option value="pending">Pendente / A Receber</option>
-                                                        </select>
-                                                    </div>
-                                                    {formData.status === 'paid' && (
-                                                        <div>
-                                                            <label className="text-xs font-medium text-slate-600 block mb-1">Data do Pagamento</label>
-                                                            <input type="date" value={formData.paymentDate} onChange={e => setFormData({...formData, paymentDate: e.target.value})} className="w-full p-2 text-sm border border-brand-200 rounded-lg outline-none focus:border-brand-500" />
-                                                            <p className="text-[10px] text-slate-400 mt-1">Se vazio, usará a data de emissão.</p>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-sm font-medium text-slate-600">Status:</label>
+                                                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="flex-1 p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-500 bg-white">
+                                                    <option value="paid">Pago / Recebido</option>
+                                                    <option value="pending">Pendente / A Receber</option>
+                                                </select>
                                             </div>
 
                                             <div className="flex gap-2 pt-2">
@@ -1092,9 +1087,11 @@
                                             <table className="w-full text-sm text-left">
                                                 <thead className="bg-slate-50 text-slate-500 sticky top-0 font-medium z-10">
                                                     <tr>
-                                                        <th className="p-3">Data Comp.</th>
+                                                        <th className="p-3">Data DRE</th>
+                                                        <th className="p-3">Comp / Baixa</th>
                                                         <th className="p-3">Filial</th>
                                                         <th className="p-3">Conta</th>
+                                                        <th className="p-3">Obs</th>
                                                         <th className="p-3">Status</th>
                                                         <th className="p-3 cursor-pointer hover:bg-slate-100" onClick={toggleSort}>Valor</th>
                                                         <th className="p-3 text-right">Ações</th>
@@ -1103,14 +1100,27 @@
                                                 <tbody className="divide-y divide-slate-100">
                                                     {sortedTransactions.map(t => (
                                                         <tr key={t.id} className="hover:bg-brand-50 group">
-                                                            <td className="p-3 text-slate-600">
-                                                                <div>{t.date ? t.date.split('-').reverse().join('/') : '-'}</div>
-                                                                {t.paymentDate && t.status === 'paid' && t.paymentDate !== t.date && <div className="text-[10px] text-emerald-600">Pg: {t.paymentDate.split('-').reverse().join('/')}</div>}
+                                                            <td className="p-3 font-bold text-slate-700">
+                                                                {formatDate(t.dreDate)}
+                                                            </td>
+                                                            <td className="p-3 text-xs text-slate-500">
+                                                                <div>C: {formatDate(t.competenceDate)}</div>
+                                                                {t.paymentDate && <div className="text-emerald-600">B: {formatDate(t.paymentDate)}</div>}
                                                             </td>
                                                             <td className="p-3 font-medium">{t.branch}</td>
                                                             <td className="p-3">
                                                                 <div className="font-mono text-xs text-slate-500">{t.code}</div>
-                                                                <div className="text-slate-700 truncate max-w-[150px]">{accountPlan[t.code] || 'Não Cadastrado'}</div>
+                                                                <div className="text-slate-700 truncate max-w-[120px]" title={accountPlan[t.code]}>{accountPlan[t.code] || '—'}</div>
+                                                            </td>
+                                                            <td className="p-3">
+                                                                {t.observation && (
+                                                                    <div className="group relative">
+                                                                        <Icon name="Eye" size={16} className="text-slate-400 cursor-help" />
+                                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                                                            {t.observation}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="p-3">
                                                                 <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${t.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-emerald-100 text-emerald-700'}`}>
