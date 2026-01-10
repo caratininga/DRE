@@ -598,6 +598,7 @@
             const [returnToBranchDetail, setReturnToBranchDetail] = React.useState(false);
             
             const [selectedMonth, setSelectedMonth] = React.useState(new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
+            const [regime, setRegime] = React.useState('competencia');
 
             React.useEffect(() => {
                 const initAuth = async () => {
@@ -666,9 +667,20 @@
 
                 if(!selectedMonth) return initialFiltered; 
                 
-                // Filtro por Data DRE apenas
-                return initialFiltered.filter(t => t.dreDate && t.dreDate.startsWith(selectedMonth));
-            }, [transactions, selectedMonth]);
+                return initialFiltered.filter(t => {
+                    // Filtro de Regime
+                    if (regime === 'caixa') {
+                        // Caixa: deve estar pago e filtramos pela DATA DE PAGAMENTO (Baixa)
+                        if (t.status === 'pending') return false; 
+                        
+                        const checkDate = t.paymentDate || t.dreDate; // Fallback se não tiver data baixa
+                        return checkDate && checkDate.startsWith(selectedMonth);
+                    } else {
+                        // Competência (DRE): filtramos pela DATA DRE
+                        return t.dreDate && t.dreDate.startsWith(selectedMonth);
+                    }
+                });
+            }, [transactions, selectedMonth, regime]);
 
             const calculateTotals = () => {
                 let receita = 0, deducoes = 0, custos = 0, despesas = 0;
@@ -907,6 +919,21 @@
                                         <div className="bg-white border border-slate-200 text-slate-400 text-sm py-1.5 px-3 rounded-md">Sem dados</div>
                                     )}
                                 </div>
+                                
+                                <div className="flex bg-white rounded-md border border-slate-200 overflow-hidden">
+                                    <button 
+                                        onClick={() => setRegime('competencia')} 
+                                        className={`px-3 py-1.5 text-xs font-bold transition-colors ${regime === 'competencia' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                    >
+                                        COMPETÊNCIA
+                                    </button>
+                                    <button 
+                                        onClick={() => setRegime('caixa')} 
+                                        className={`px-3 py-1.5 text-xs font-bold transition-colors ${regime === 'caixa' ? 'bg-brand-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                    >
+                                        CAIXA
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-4">
@@ -923,7 +950,7 @@
                         {/* Status Bar do Filtro */}
                         <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm">
                             <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
-                            <span className="flex items-center gap-2">Data base: <strong>Data do DRE</strong></span>
+                            <span className="flex items-center gap-2">Modo: <strong>{regime === 'competencia' ? 'DRE Econômico (Competência)' : 'Fluxo Financeiro (Caixa)'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
                         </div>
 
                         {view === 'branch-detail' && (
@@ -971,12 +998,12 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-4 flex flex-col gap-2">
-                                        <button onClick={() => {setFormData(prev => ({...prev, branch: selectedBranch === 'TOTAL_CONSOLIDATED' ? '' : selectedBranch})); setView('data-entry'); setSearchTerm(''); setReturnToBranchDetail(false);}} className="w-full py-3 bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2"><Icon name="PlusCircle" size={18} /> Novo Lançamento</button>
-                                        {selectedBranch !== 'TOTAL_CONSOLIDATED' && (
+                                    {selectedBranch !== 'TOTAL_CONSOLIDATED' && (
+                                        <div className="mt-4 flex flex-col gap-2">
+                                            <button onClick={() => {setFormData(prev => ({...prev, branch: selectedBranch === 'TOTAL_CONSOLIDATED' ? '' : selectedBranch})); setView('data-entry'); setSearchTerm(''); setReturnToBranchDetail(false);}} className="w-full py-3 bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2"><Icon name="PlusCircle" size={18} /> Novo Lançamento</button>
                                             <button onClick={() => setShowTransfer(true)} className="w-full py-3 bg-orange-50 text-orange-700 font-medium rounded-xl hover:bg-orange-100 border border-orange-200 flex items-center justify-center gap-2"><Icon name="Truck" size={18} /> Transferir Insumos</button>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="lg:col-span-2">
                                     <DRETreeTable 
@@ -1064,6 +1091,7 @@
                                         <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
                                             <button onClick={() => setShowImport(true)} className="w-full py-3 bg-emerald-50 text-emerald-700 font-bold rounded-lg hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center gap-2"><Icon name="Upload" size={18}/> Importar Arquivos</button>
                                             <button onClick={handleExport} className="w-full py-3 bg-blue-50 text-blue-700 font-bold rounded-lg hover:bg-blue-100 border border-blue-200 flex items-center justify-center gap-2"><Icon name="Download" size={18}/> Exportar Excel</button>
+                                            <button onClick={() => setShowTransfer(true)} className="w-full py-3 bg-orange-50 text-orange-700 font-bold rounded-lg hover:bg-orange-100 border border-orange-200 flex items-center justify-center gap-2"><Icon name="Truck" size={18} /> Transferir Insumos</button>
                                         </div>
                                     </div>
                                 </div>
