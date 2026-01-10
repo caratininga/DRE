@@ -647,10 +647,7 @@
             const availableMonths = React.useMemo(() => {
                 const months = new Set();
                 transactions.forEach(t => {
-                    // Adicionar datas de todas as colunas para o filtro ser abrangente
                     if (t.dreDate) months.add(t.dreDate.slice(0, 7));
-                    if (t.competenceDate) months.add(t.competenceDate.slice(0, 7));
-                    if (t.paymentDate) months.add(t.paymentDate.slice(0, 7));
                 });
                 return Array.from(months).sort().reverse();
             }, [transactions]);
