@@ -647,7 +647,10 @@
             const availableMonths = React.useMemo(() => {
                 const months = new Set();
                 transactions.forEach(t => {
+                    // Adicionar datas de todas as colunas para o filtro ser abrangente
                     if (t.dreDate) months.add(t.dreDate.slice(0, 7));
+                    if (t.competenceDate) months.add(t.competenceDate.slice(0, 7));
+                    if (t.paymentDate) months.add(t.paymentDate.slice(0, 7));
                 });
                 return Array.from(months).sort().reverse();
             }, [transactions]);
@@ -658,7 +661,7 @@
                 }
             }, [availableMonths, selectedMonth]);
 
-            // --- FILTRAGEM ---
+            // --- FILTRAGEM CORRIGIDA ---
             const filteredTransactions = React.useMemo(() => {
                 let initialFiltered = transactions;
                 
@@ -668,7 +671,7 @@
                 if(!selectedMonth) return initialFiltered; 
                 
                 return initialFiltered.filter(t => {
-                    // Filtro de Regime
+                    // Lógica de Filtro Inteligente por Regime
                     if (regime === 'caixa') {
                         // Caixa: deve estar pago e filtramos pela DATA DE PAGAMENTO (Baixa)
                         if (t.status === 'pending') return false; 
@@ -676,8 +679,9 @@
                         const checkDate = t.paymentDate || t.dreDate; // Fallback se não tiver data baixa
                         return checkDate && checkDate.startsWith(selectedMonth);
                     } else {
-                        // Competência (DRE): filtramos pela DATA DRE
-                        return t.dreDate && t.dreDate.startsWith(selectedMonth);
+                        // Competência (DRE): filtramos pela DATA COMPETÊNCIA
+                        const checkDate = t.competenceDate || t.dreDate;
+                        return checkDate && checkDate.startsWith(selectedMonth);
                     }
                 });
             }, [transactions, selectedMonth, regime]);
@@ -950,7 +954,7 @@
                         {/* Status Bar do Filtro */}
                         <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm">
                             <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
-                            <span className="flex items-center gap-2">Modo: <strong>{regime === 'competencia' ? 'DRE Econômico (Competência)' : 'Fluxo Financeiro (Caixa)'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
+                            <span className="flex items-center gap-2">Data usada: <strong>{regime === 'competencia' ? 'COMPETÊNCIA' : 'BAIXA/PAGAMENTO'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
                         </div>
 
                         {view === 'branch-detail' && (
@@ -1055,7 +1059,7 @@
                                             {/* --- BLOCO DE DATAS --- */}
                                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
                                                 <div>
-                                                    <label className="text-xs font-bold text-brand-700 uppercase">Data do DRE (Filtro)</label>
+                                                    <label className="text-xs font-bold text-brand-700 uppercase">Data do DRE (Ref.)</label>
                                                     <input type="date" value={formData.dreDate} onChange={e => setFormData({...formData, dreDate: e.target.value})} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:border-brand-500" required />
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2">
