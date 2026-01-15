@@ -63,6 +63,35 @@
         .pl-level-2 { padding-left: 3.5rem; }
         .pl-level-3 { padding-left: 5rem; }
         .pl-level-4 { padding-left: 6.5rem; }
+
+        /* --- ESTILOS DE IMPRESSÃO --- */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            #root { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .container { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+            
+            /* Remove sombras e bordas extras na impressão para ficar mais limpo */
+            .shadow-lg, .shadow-sm, .shadow-md, .shadow-2xl { box-shadow: none !important; }
+            .border-brand-100 { border-color: #ccc !important; }
+            
+            /* Garante que o grid se comporte bem (empilha o resumo e a tabela) */
+            .grid { display: block !important; }
+            .lg\:col-span-1, .lg\:col-span-2 { width: 100% !important; margin-bottom: 20px !important; }
+            
+            /* Ajuste para tabelas longas */
+            table { page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            
+            /* Remove background colors muito fortes ou ajusta */
+            .bg-brand-800 { background-color: #eee !important; color: black !important; border: 1px solid #000; }
+            .text-white { color: black !important; }
+            
+            /* Remove scrollbars */
+            .overflow-x-auto, .overflow-hidden { overflow: visible !important; height: auto !important; }
+        }
     </style>
 </head>
 <body class="bg-brand-50 text-slate-900 antialiased">
@@ -118,7 +147,8 @@
             Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
             Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
             CheckCircle: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
-            Eye: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            Eye: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Printer: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
         };
 
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -211,7 +241,7 @@
                                 <span>{formatCurrency(node.total)}</span>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); onInspect(node.code); }} 
-                                    className="p-1 rounded-full text-slate-400 hover:text-brand-600 hover:bg-brand-100 transition-colors"
+                                    className="p-1 rounded-full text-slate-400 hover:text-brand-600 hover:bg-brand-100 transition-colors no-print"
                                     title="Ver lançamentos / Editar"
                                 >
                                     <Icon name="Search" size={14} />
@@ -296,13 +326,13 @@
             }, [transactions, accountPlan]);
 
             return (
-                <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden flex flex-col h-full">
-                    <div className="bg-brand-800 px-6 py-4 flex justify-between items-center text-white">
+                <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden flex flex-col h-full print:border-none print:shadow-none">
+                    <div className="bg-brand-800 px-6 py-4 flex justify-between items-center text-white print:bg-slate-200 print:text-black">
                         <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="Waves" /> Detalhamento Analítico</h2>
                     </div>
                     <div className="overflow-x-auto flex-1">
                         <table className="w-full text-sm">
-                            <thead className="bg-slate-100 text-slate-500 uppercase text-xs font-bold sticky top-0 z-10 shadow-sm">
+                            <thead className="bg-slate-100 text-slate-500 uppercase text-xs font-bold sticky top-0 z-10 shadow-sm print:static print:shadow-none">
                                 <tr>
                                     <th className="py-3 px-4 text-left min-w-[300px]">Código / Conta</th>
                                     {showBranches && branches.map(b => (
@@ -388,7 +418,7 @@
             const availableBranches = branches.length > 0 ? branches : ['1-MATRIZ', '3-FRECHEIRINHA', '4-MUCAMBO', '5-TIANGUA'];
 
             return (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in p-4 no-print">
                     <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full">
                         <h3 className="text-xl font-bold text-brand-900 mb-4 flex items-center gap-2">
                             <Icon name="Truck" /> Transferir Insumos
@@ -511,7 +541,7 @@
             };
 
             return (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in p-4">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in p-4 no-print">
                     <div className="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full">
                         <h3 className="text-xl font-bold text-brand-900 mb-4 flex items-center gap-2"><Icon name="Upload" /> Importação</h3>
                         <div className="flex gap-2 mb-6">
@@ -891,12 +921,16 @@
                 return { ...sums, receitaLiquida, lucroBruto, resultadoOp, resultadoLiquido };
             }, [branchTransactions, selectedBranch]);
 
+            const handlePrint = () => {
+                window.print();
+            };
+
             if (!user) return <LoginScreen />;
             if (loading) return <div className="min-h-screen flex items-center justify-center bg-brand-50 text-brand-400 font-bold">Carregando Balneário System...</div>;
 
             return (
                 <div className="min-h-screen bg-brand-50 font-sans text-slate-900 pb-10">
-                    <header className="bg-white border-b border-brand-100 shadow-sm sticky top-0 z-40">
+                    <header className="bg-white border-b border-brand-100 shadow-sm sticky top-0 z-40 print:hidden">
                         <div className="container mx-auto px-4 h-16 flex flex-col md:flex-row items-center justify-between gap-2 md:gap-0">
                             <div className="flex items-center gap-3">
                                 <div className="bg-brand-600 text-white p-1.5 rounded-lg"><Icon name="Waves" /></div>
@@ -949,18 +983,25 @@
 
                     <main className="container mx-auto px-4 py-8">
                         {/* Status Bar do Filtro */}
-                        <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm">
+                        <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm print:hidden">
                             <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
                             <span className="flex items-center gap-2">Data usada: <strong>{regime === 'competencia' ? 'COMPETÊNCIA' : 'BAIXA/PAGAMENTO'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
                         </div>
 
                         {view === 'branch-detail' && (
-                            <button onClick={() => {setView('dashboard'); setSelectedBranch(null);}} className="mb-6 flex items-center gap-2 px-4 py-2 text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 hover:shadow-sm transition-all text-sm font-bold"><Icon name="ChevronLeft" size={18} /> Voltar para Visão Geral</button>
+                            <div className="mb-6 flex justify-between items-center no-print">
+                                <button onClick={() => {setView('dashboard'); setSelectedBranch(null);}} className="flex items-center gap-2 px-4 py-2 text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 hover:shadow-sm transition-all text-sm font-bold">
+                                    <Icon name="ChevronLeft" size={18} /> Voltar para Visão Geral
+                                </button>
+                                <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 shadow-sm transition-all text-sm font-bold">
+                                    <Icon name="Printer" size={18} /> Imprimir Relatório
+                                </button>
+                            </div>
                         )}
                         
                         {view === 'dashboard' && (
                             <div className="space-y-6 animate-fade-in">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
                                     <Card title="Receita Global" value={formatCurrency(totals.receita)} icon="TrendingUp" colorClass="text-emerald-600 bg-emerald-50" />
                                     <Card title="Lucro Bruto" value={formatCurrency(totals.lucroBruto)} icon="Database" colorClass="text-brand-600 bg-brand-50" subtext={`Custo: ${formatCurrency(totals.custos)}`} />
                                     <Card title="Despesas Totais" value={formatCurrency(totals.despesas)} icon="TrendingDown" colorClass="text-red-500 bg-red-50" />
@@ -975,14 +1016,14 @@
                         )}
                         
                         {view === 'branch-detail' && selectedBranch && branchDRESummary && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-                                <div className="lg:col-span-1">
-                                    <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden sticky top-20">
-                                        <div className="bg-slate-800 px-6 py-4 text-white">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in print:block">
+                                <div className="lg:col-span-1 print:mb-8">
+                                    <div className="bg-white rounded-xl shadow-lg border border-brand-100 overflow-hidden sticky top-20 print:static print:shadow-none print:border-none">
+                                        <div className="bg-slate-800 px-6 py-4 text-white print:bg-white print:text-black print:border-b print:border-black print:px-0">
                                             <h2 className="text-lg font-bold flex items-center gap-2"><Icon name="Building2" /> DRE Gerencial</h2>
-                                            <p className="text-xs opacity-70">{selectedBranch === 'TOTAL_CONSOLIDATED' ? 'CONSOLIDADO GERAL' : selectedBranch}</p>
+                                            <p className="text-xs opacity-70 print:opacity-100 print:font-bold">{selectedBranch === 'TOTAL_CONSOLIDATED' ? 'CONSOLIDADO GERAL' : selectedBranch} - {selectedMonth ? formatMonthYear(selectedMonth) : 'Total'}</p>
                                         </div>
-                                        <div className="p-6">
+                                        <div className="p-6 print:px-0">
                                             <StatRow label="(+) Receita Bruta" value={formatCurrency(branchDRESummary.receitaBruta)} isTotal color="text-brand-700" />
                                             <StatRow label="(-) Deduções (Taxas/Imp)" value={`(${formatCurrency(branchDRESummary.deducoes)})`} indent color="text-red-500" />
                                             <StatRow label="(=) Receita Líquida" value={formatCurrency(branchDRESummary.receitaLiquida)} isTotal borderTop />
@@ -992,15 +1033,15 @@
                                             <StatRow label="(=) Resultado Op." value={formatCurrency(branchDRESummary.resultadoOp)} isTotal borderTop />
                                             <StatRow label="(-) Despesas Financeiras" value={`(${formatCurrency(branchDRESummary.despesasFinanceiras)})`} indent color="text-red-500" />
                                             <StatRow label="(-) Outras Despesas / Inv." value={`(${formatCurrency(branchDRESummary.outrasDespesas)})`} indent color="text-red-500" />
-                                            <div className="my-4 border-t-2 border-brand-800"></div>
-                                            <div className="flex justify-between items-center py-3 px-4 bg-brand-50 rounded-lg">
+                                            <div className="my-4 border-t-2 border-brand-800 print:border-black"></div>
+                                            <div className="flex justify-between items-center py-3 px-4 bg-brand-50 rounded-lg print:bg-white print:border print:border-black">
                                                 <span className="font-bold text-slate-900">(=) LUCRO LÍQUIDO</span>
-                                                <span className={`font-bold text-lg ${branchDRESummary.resultadoLiquido >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(branchDRESummary.resultadoLiquido)}</span>
+                                                <span className={`font-bold text-lg ${branchDRESummary.resultadoLiquido >= 0 ? 'text-emerald-700' : 'text-red-700'} print:text-black`}>{formatCurrency(branchDRESummary.resultadoLiquido)}</span>
                                             </div>
                                         </div>
                                     </div>
                                     {selectedBranch !== 'TOTAL_CONSOLIDATED' && (
-                                        <div className="mt-4 flex flex-col gap-2">
+                                        <div className="mt-4 flex flex-col gap-2 no-print">
                                             <button onClick={() => {setFormData(prev => ({...prev, branch: selectedBranch === 'TOTAL_CONSOLIDATED' ? '' : selectedBranch})); setView('data-entry'); setSearchTerm(''); setReturnToBranchDetail(false);}} className="w-full py-3 bg-brand-600 text-white font-medium rounded-xl hover:bg-brand-700 shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2"><Icon name="PlusCircle" size={18} /> Novo Lançamento</button>
                                             <button onClick={() => setShowTransfer(true)} className="w-full py-3 bg-orange-50 text-orange-700 font-medium rounded-xl hover:bg-orange-100 border border-orange-200 flex items-center justify-center gap-2"><Icon name="Truck" size={18} /> Transferir Insumos</button>
                                         </div>
@@ -1019,7 +1060,7 @@
                         )}
 
                         {view === 'data-entry' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in no-print">
                                 <div className="lg:col-span-1 space-y-6">
                                     {returnToBranchDetail && (
                                         <button 
