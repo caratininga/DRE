@@ -716,6 +716,7 @@
             const availableMonths = React.useMemo(() => {
                 const months = new Set();
                 transactions.forEach(t => {
+                    // Apenas meses da Data DRE (Coluna 1) entram na lista de seleção
                     if (t.dreDate) months.add(t.dreDate.slice(0, 7));
                 });
                 return Array.from(months).sort().reverse();
@@ -727,27 +728,29 @@
                 }
             }, [availableMonths, selectedMonth]);
 
-            // --- FILTRAGEM CORRIGIDA (AGORA ESTRICTA) ---
+            // --- FILTRAGEM CORRIGIDA (DINÂMICA POR REGIME) ---
             const filteredTransactions = React.useMemo(() => {
                 let data = transactions;
                 
                 // 1. Regra de Negócio: Ignorar "Graça Centro"
                 data = data.filter(t => t.branch && !String(t.branch).toUpperCase().includes('GRAÇA CENTRO'));
 
-                // 2. Filtro de Período (Mês/Ano) - REGRA: BASEADO ESTRITAMENTE NA DATA DRE
-                if (selectedMonth) {
-                    data = data.filter(t => {
-                        const itemDreDate = t.dreDate || '';
-                        return itemDreDate.startsWith(selectedMonth);
-                    });
-                }
-                
-                // 3. Filtro de Regime (Competência x Caixa)
-                // REGRA: Dentro do mês DRE selecionado, filtrar pelo status.
-                // Competência = Tudo (Pago + Pendente)
-                // Caixa = Apenas Pagos (Realizado dentro da competência DRE)
+                if (!selectedMonth) return data;
+
+                // 2. Filtro de Regime Dinâmico
                 if (regime === 'caixa') {
-                    data = data.filter(t => t.status !== 'pending');
+                    // CAIXA: Filtra pela 3ª Coluna (Data de Baixa/Pagamento)
+                    // Regra: Deve estar Pago E a Data de Pagamento deve ser do mês selecionado
+                    data = data.filter(t => {
+                        return t.status === 'paid' && t.paymentDate && t.paymentDate.startsWith(selectedMonth);
+                    });
+                } else {
+                    // COMPETÊNCIA: Filtra pela 2ª Coluna (Data de Competência)
+                    // Regra: A Data de Competência deve ser do mês selecionado
+                    // (Ignora status de pagamento, mostra tudo projetado para aquele mês)
+                    data = data.filter(t => {
+                        return t.competenceDate && t.competenceDate.startsWith(selectedMonth);
+                    });
                 }
 
                 return data;
@@ -1025,7 +1028,7 @@
                         {/* Status Bar do Filtro */}
                         <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm print:hidden">
                             <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
-                            <span className="flex items-center gap-2">Base: <strong>DATA DRE</strong> | Modo: <strong>{regime === 'competencia' ? 'COMPETÊNCIA (Tudo)' : 'CAIXA (Só Pagos)'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
+                            <span className="flex items-center gap-2">Base: <strong>{regime === 'competencia' ? 'DATA COMPETÊNCIA' : 'DATA PAGAMENTO'}</strong> | Modo: <strong>{regime === 'competencia' ? 'COMPETÊNCIA' : 'CAIXA'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
                         </div>
 
                         {view === 'branch-detail' && (
