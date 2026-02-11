@@ -99,7 +99,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- 1. CONFIGURAÇÃO FIREBASE (INTEGRADA) ---
+        // --- 1. CONFIGURAÇÃO FIREBASE ---
         
         const firebaseConfig = {
             apiKey: "AIzaSyBFQ-UeAdGVI1QzwisPdjTOxcpby5Ovp80",
@@ -117,7 +117,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'caratininga-dre-prod';
+        const appId = 'caratininga-dre-prod';
 
         // --- Ícones ---
         const Icons = {
@@ -465,13 +465,38 @@
 
             const parseDate = (value) => {
                 if (!value) return null;
-                if (value instanceof Date) return value.toISOString().split('T')[0];
-                if (typeof value === 'number') { const date = new Date(Math.round((value - 25569) * 86400 * 1000)); return date.toISOString().split('T')[0]; }
+                // Excel Serial Date - Correção de Fuso Horário
+                // O Excel considera datas como 1 = 1900-01-01. O JS considera ms desde 1970.
+                // Ajustamos para garantir que a data não volte 1 dia devido ao fuso local.
+                if (typeof value === 'number') { 
+                    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+                    // Adiciona o offset do timezone para garantir que pegamos a data "visual" correta
+                    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+                    const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+                    return adjustedDate.toISOString().split('T')[0]; 
+                }
                 if (typeof value === 'string') {
                     if (value.includes('/')) { const parts = value.split('/'); if (parts.length === 3) { const day = parts[0]; const month = parts[1]; const year = parts[2].length === 2 ? '20' + parts[2] : parts[2]; return `${year}-${month}-${day}`; } }
                     const date = new Date(value); if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
                 }
                 return null;
+            };
+
+            const parseAmount = (val) => {
+                if (typeof val === 'number') return val;
+                if (typeof val === 'string') {
+                    // Remove R$, espaços e converte vírgula para ponto se necessário
+                    let clean = val.replace('R$', '').trim();
+                    if (clean.includes(',') && clean.includes('.')) {
+                        // Formato 1.000,00 -> Remove ponto, troca virgula por ponto
+                        clean = clean.replace(/\./g, '').replace(',', '.');
+                    } else if (clean.includes(',')) {
+                        clean = clean.replace(',', '.');
+                    }
+                    const num = parseFloat(clean);
+                    return isNaN(num) ? 0 : num;
+                }
+                return 0;
             };
 
             const handleFileUpload = (e) => {
@@ -494,35 +519,51 @@
                             // Nova Ordem:
                             // 0: Data DRE | 1: Data Comp | 2: Data Baixa | 3: Filial | 4: Código | 5: Valor | 6: Status | 7: Obs
                             const parsedItems = data.map(row => {
-                                if (!row[5]) return null; // Valor é mandatório
+                                const amount = parseAmount(row[5]);
+                                if (!amount && amount !== 0) return null; // Ignora linhas sem valor válido
+
                                 const rawCode = row[4] ? String(row[4]).trim() : '99';
                                 
                                 const dateDRE = parseDate(row[0]);
-                                const dateComp = parseDate(row[1]) || dateDRE;
-                                let datePay = parseDate(row[2]);
+                                const dateComp = parseDate(row[1]);
+                                const datePay = parseDate(row[2]);
+
+                                // HIERARQUIA DE DATAS ROBUSTA
+                                // Se DRE estiver vazio, tenta Competência, depois Pagamento, senão IGNORA (não usa Hoje)
+                                const finalDreDate = dateDRE || dateComp || datePay;
+                                
+                                if (!finalDreDate) return null; // Ignora linhas sem nenhuma data
 
                                 // Tratamento Status
                                 let status = 'paid'; 
                                 if(row[6]) {
                                     const st = String(row[6]).toLowerCase().trim();
-                                    if(st.includes('pend') || st.includes('aberto')) status = 'pending';
+                                    if(st.includes('pend') || st.includes('aberto') || st.includes('pagar')) status = 'pending';
                                 }
 
-                                if(status === 'paid' && !datePay) datePay = dateDRE;
-                                if(status === 'pending') datePay = '';
+                                const finalDatePay = (status === 'paid' && !datePay) ? finalDreDate : (status === 'pending' ? '' : datePay);
+
+                                // Tratamento Filial (Evita "Graça Centro" se for Matriz)
+                                let branch = row[3] ? String(row[3]).trim() : '1-MATRIZ'; // Default seguro
+                                if (!branch) branch = '1-MATRIZ';
 
                                 return { 
-                                    dreDate: dateDRE || new Date().toISOString().split('T')[0],
-                                    competenceDate: dateComp,
-                                    paymentDate: datePay,
-                                    branch: row[3] ? String(row[3]).trim() : 'Matriz', 
+                                    dreDate: finalDreDate,
+                                    competenceDate: dateComp || finalDreDate,
+                                    paymentDate: finalDatePay,
+                                    branch: branch, 
                                     code: rawCode, 
-                                    amount: parseFloat(row[5]) || 0,
+                                    amount: amount,
                                     status: status,
                                     observation: row[7] ? String(row[7]).trim() : ''
                                 };
                             }).filter(i => i !== null);
-                            onImportTransactions(parsedItems);
+
+                            if (parsedItems.length === 0) {
+                                alert("Nenhum lançamento válido encontrado. Verifique as datas e valores.");
+                            } else {
+                                onImportTransactions(parsedItems);
+                            }
                         } else {
                             // PLANO DE CONTAS
                             const planMap = {};
@@ -535,7 +576,7 @@
                             });
                             onImportPlan(planMap);
                         }
-                    } catch (error) { console.error(error); alert("Erro ao ler arquivo."); } finally { setUploading(false); }
+                    } catch (error) { console.error(error); alert("Erro ao ler arquivo. Verifique se é um Excel válido."); } finally { setUploading(false); }
                 };
                 reader.readAsBinaryString(file);
             };
@@ -631,13 +672,10 @@
             const [regime, setRegime] = React.useState('competencia');
 
             React.useEffect(() => {
-                const initAuth = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        try { await auth.signInWithCustomToken(__initial_auth_token); } catch (e) { console.error("Falha no login automático", e); }
-                    }
-                };
-                initAuth();
-                const unsubscribe = auth.onAuthStateChanged((u) => { setUser(u); setLoading(false); }); 
+                const unsubscribe = auth.onAuthStateChanged((u) => { 
+                    setUser(u); 
+                    setLoading(false); 
+                }); 
                 return () => unsubscribe(); 
             }, []);
             
@@ -669,7 +707,8 @@
                 const branches = new Set(
                     transactions
                         .map(t => t.branch)
-                        .filter(b => b && !b.includes('Graça Centro') && !b.includes('GRAÇA CENTRO')) 
+                        // Garante que ignore case sensitive e trim
+                        .filter(b => b && !String(b).toUpperCase().includes('GRAÇA CENTRO') && String(b).trim() !== '') 
                 ); 
                 return Array.from(branches).sort(); 
             }, [transactions]);
@@ -688,29 +727,30 @@
                 }
             }, [availableMonths, selectedMonth]);
 
-            // --- FILTRAGEM CORRIGIDA ---
+            // --- FILTRAGEM CORRIGIDA (AGORA ESTRICTA) ---
             const filteredTransactions = React.useMemo(() => {
-                let initialFiltered = transactions;
+                let data = transactions;
                 
-                // Filtro "Graça Centro"
-                initialFiltered = initialFiltered.filter(t => t.branch && !t.branch.includes('Graça Centro') && !t.branch.includes('GRAÇA CENTRO'));
+                // 1. Regra de Negócio: Ignorar "Graça Centro"
+                data = data.filter(t => t.branch && !String(t.branch).toUpperCase().includes('GRAÇA CENTRO'));
 
-                if(!selectedMonth) return initialFiltered; 
+                // 2. Filtro de Período (Mês/Ano) - REGRA: BASEADO ESTRITAMENTE NA DATA DRE
+                if (selectedMonth) {
+                    data = data.filter(t => {
+                        const itemDreDate = t.dreDate || '';
+                        return itemDreDate.startsWith(selectedMonth);
+                    });
+                }
                 
-                return initialFiltered.filter(t => {
-                    // Lógica de Filtro Inteligente por Regime
-                    if (regime === 'caixa') {
-                        // Caixa: deve estar pago e filtramos pela DATA DE PAGAMENTO (Baixa)
-                        if (t.status === 'pending') return false; 
-                        
-                        const checkDate = t.paymentDate || t.dreDate; // Fallback se não tiver data baixa
-                        return checkDate && checkDate.startsWith(selectedMonth);
-                    } else {
-                        // Competência (DRE): filtramos pela DATA COMPETÊNCIA
-                        const checkDate = t.competenceDate || t.dreDate;
-                        return checkDate && checkDate.startsWith(selectedMonth);
-                    }
-                });
+                // 3. Filtro de Regime (Competência x Caixa)
+                // REGRA: Dentro do mês DRE selecionado, filtrar pelo status.
+                // Competência = Tudo (Pago + Pendente)
+                // Caixa = Apenas Pagos (Realizado dentro da competência DRE)
+                if (regime === 'caixa') {
+                    data = data.filter(t => t.status !== 'pending');
+                }
+
+                return data;
             }, [transactions, selectedMonth, regime]);
 
             const calculateTotals = () => {
@@ -985,7 +1025,7 @@
                         {/* Status Bar do Filtro */}
                         <div className="mb-6 flex items-center justify-between text-xs text-slate-500 bg-white px-4 py-2 rounded-lg border border-brand-100 shadow-sm print:hidden">
                             <span className="flex items-center gap-2"><Icon name="Calendar" size={14} className="text-brand-500"/> Exibindo dados de: <strong>{selectedMonth ? formatMonthYear(selectedMonth) : 'Todo o Período'}</strong></span>
-                            <span className="flex items-center gap-2">Data usada: <strong>{regime === 'competencia' ? 'COMPETÊNCIA' : 'BAIXA/PAGAMENTO'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
+                            <span className="flex items-center gap-2">Base: <strong>DATA DRE</strong> | Modo: <strong>{regime === 'competencia' ? 'COMPETÊNCIA (Tudo)' : 'CAIXA (Só Pagos)'}</strong> <Icon name={regime === 'competencia' ? 'FileText' : 'CheckCircle'} size={14} className="text-brand-500"/></span>
                         </div>
 
                         {view === 'branch-detail' && (
